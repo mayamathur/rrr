@@ -355,8 +355,12 @@ prop_stronger_np = function(q,
   
   # get CI limits
   alpha = 1 - CI.level
-  ( CI.lo.NP = pct.vec[ pct.vec < Phat.below.NP ][ which.min( abs( pvals[ pct.vec < Phat.below.NP ] - alpha ) ) ] )
-  ( CI.hi.NP = pct.vec[ pct.vec > Phat.below.NP ][ which.min( abs( pvals[ pct.vec > Phat.below.NP ] - alpha ) ) ] )
+  # in case the point estimate is already 1 or 0, avoid null objects
+  if ( Phat.below.NP == 1 ) CI.hi.NP = 1
+  else CI.hi.NP = pct.vec[ pct.vec > Phat.below.NP ][ which.min( abs( pvals[ pct.vec > Phat.below.NP ] - alpha ) ) ]
+  
+  if ( Phat.below.NP == 0 ) CI.lo.NP = 0
+  else CI.lo.NP = pct.vec[ pct.vec < Phat.below.NP ][ which.min( abs( pvals[ pct.vec < Phat.below.NP ] - alpha ) ) ]
   
   # if user wanted the upper tail, reverse everything
   if ( tail == "below" ) {

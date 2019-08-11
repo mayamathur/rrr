@@ -4,10 +4,6 @@
 path = "/home/groups/manishad/MAM"
 setwd(path)
 
-# FOR LOCAL USE
-# path = "~/Dropbox/Personal computer/HARVARD/THESIS/Thesis paper #2 (MO)/Sandbox/2018-1-13"
-# setwd(path)
-
 # full set of scenarios
 k = c(10, 20, 50)
 mu = 0.5  # mean of true effects (log-RR)
@@ -19,7 +15,7 @@ tail = "above"
 
 # only running P = 0.20 to supplement previous sim results
 # set q to be the quantiles such that TheoryP is 0.2 for every V
-TheoryP = c(0.15)
+TheoryP = c(0.05, 0.1, 0.2, 0.4)
 
 qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 

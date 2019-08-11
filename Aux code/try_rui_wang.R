@@ -97,7 +97,7 @@ setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to 
 source("functions_RRR.R")
 
 ##### Compare to Parametric #####
-q = 0.18
+q = 0.15
 meta = rma.uni( yi = d$main.fis,
                 sei = d$main.SE, 
                 method = "REML" )

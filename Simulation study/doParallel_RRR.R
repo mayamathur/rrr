@@ -58,22 +58,40 @@ muN = NA # placeholder only
 sd.w = 1
 tail="above"
 
+TheoryP = c(0.10)
 
-# sim.reps = 500  # reps to run in this iterate; leave this alone!
-# boot.reps = 1000
-sim.reps = 100
-boot.reps = 1000
+qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
+
+for (i in 1:length(TheoryP) ) {
+  new.qs = qnorm( p = 1 - TheoryP[i],
+                  mean = mu,
+                  sd = sqrt(V) )
+  qmat[,i] = new.qs
+}
+
+q = unique( as.vector( qmat ))
 
 # matrix of scenario parameters
 scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w)
 names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w" )
+
+
+# only keep combos of V and q that lead to the TheoryPs we want
+TheoryP2 = 1 - pnorm( q = scen.params$q,
+                      mean = scen.params$mu,
+                      sd = sqrt(scen.params$V) )
+scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
+table(scen.params$q, scen.params$V ); qmat  # each 
+
+
 # avoid naming scenario capital "F" because gets interpreted as FALSE
 my.letters = c(letters,
                paste(letters,letters,sep=""),
                paste(letters,letters,letters,sep=""),
                paste(letters,letters,letters,letters,sep=""),
                paste(letters,letters,letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,letters,letters,sep="")
+               paste(letters,letters,letters,letters,letters,letters,sep=""),
+               paste(letters,letters,letters,letters,letters,letters,letters,sep="")
 )
 
 #start.at = which( my.letters == "aaaa" )
@@ -85,14 +103,21 @@ scen.params$scen.name = my.letters[ start.at : ( start.at + nrow(scen.params) - 
 scen.params$muN = scen.params$minN + 50
 
 
-# WAS FOR LOCAL USE
+
+# sim.reps = 500  # reps to run in this iterate; leave this alone!
+# boot.reps = 1000
+sim.reps = 500
+boot.reps = 1000
+
+
 library(foreach)
 library(doParallel)
 library(dplyr)
 library(boot)
 
-setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Manuscript code/Simulation study/For Sherlock")
-source("functions_MAM.R")
+# read in helper fns
+setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+source("functions_RRR.R")
 
 # # ~~~ DEBUGGING: FOR CLUSTER
 # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
@@ -147,6 +172,7 @@ scen = "a"
 
 
 ########################### WRITE BLANK CSV FILE  ###########################
+# ~~~ udpate this if using more methods! 
 # this records that the rep started in case there is a problem with the bootstrapping
 placeholder = data.frame( TrueMean = NA,
                           EstMean = NA,
@@ -264,54 +290,124 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                                                         tail = p$tail )$Est )
                      }
     )
+  
     
     #bootCIs = boot.ci(boot.res, type="perc")
     bootCIs = boot.ci(boot.res, type="bca")
     boot.lo = bootCIs$bca[4]
     boot.hi = bootCIs$bca[5]
     
+    ##### Get Nonparametric Phat and CI #####
+    Phat.NP = prop_stronger_np( q = q,
+                                  yi = d$yi,
+                                  vi = d$vyi,
+                                  tail = "above",
+                                  R = 2000,
+                                  return.vectors = FALSE)
+
     
     # fill in new row of summary dataframe with bias, coverage, and CI width for DM and bootstrap
     # dataframe with 3 rows, one for each method
-    rows =     data.frame( TrueMean = p$mu,
-                           EstMean = M,
-                           MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-                           
-                           TrueVar = p$V,
-                           EstVar = t2,
-                           VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-                                              CIs$random["tau^2", "ci.ub"] ),
-                           
-                           TheoryP = expected,  # from Normal quantiles given mu, V
-                           TruthP = p.above,   # based on generated data
-                           phat = ours$Est,  # our estimator
-                           phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-                           
-                           # method of calculating CI: exponentiate logit or not?
-                           Method = c( "Logit",
-                                       "Original",
-                                       "Boot"), 
-                           
-                           # CI performance
-                           Cover = c( covers(expected, ours$lo.expon, ours$hi.expon),
-                                      covers(expected, ours$lo, ours$hi),
-                                      covers(expected, boot.lo, boot.hi)
-                           ), # coverage; vector with length 3
-                           
-                           Width = c( ours$hi.expon - ours$lo.expon,
-                                      ours$hi - ours$lo,
-                                      boot.hi - boot.lo )
-    )
     
-    # add in scenario parameters
-    rows$scen.name = scen
-    rows = as.data.frame( merge(rows, scen.params) )
-    rows
-  
+      rows =     data.frame( TrueMean = p$mu,
+                             EstMean = M,
+                             MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+                             
+                             TrueVar = p$V,
+                             EstVar = t2,
+                             VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                                CIs$random["tau^2", "ci.ub"] ),
+                             
+                             TheoryP = expected,  # from Normal quantiles given mu, V
+                             TruthP = p.above,   # based on generated data
+                             phat = ours$Est,  # our estimator
+                             phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+                             
+                             # method of calculating CI: exponentiate logit or not?
+                             Method = "Logit", 
+                             
+                             # CI performance
+                             Cover = covers(expected, ours$lo.expon, ours$hi.expon),
+                             
+                             Width = ours$hi.expon - ours$lo.expon )
+      
+      rows = add_row( rows, 
+                      TrueMean = p$mu,
+                      EstMean = M,
+                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+                      
+                      TrueVar = p$V,
+                      EstVar = t2,
+                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                         CIs$random["tau^2", "ci.ub"] ),
+                      
+                      TheoryP = expected,  # from Normal quantiles given mu, V
+                      TruthP = p.above,   # based on generated data
+                      phat = ours$Est,  # our estimator
+                      phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+                      
+                      # method of calculating CI: exponentiate logit or not?
+                      Method = "Original", 
+                      
+                      # CI performance
+                      Cover = covers(expected, ours$lo, ours$hi),
+                      
+                      Width = ours$hi - ours$lo )
+      
+      rows = add_row( rows, 
+                      TrueMean = p$mu,
+                      EstMean = M,
+                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+                      
+                      TrueVar = p$V,
+                      EstVar = t2,
+                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                         CIs$random["tau^2", "ci.ub"] ),
+                      
+                      TheoryP = expected,  # from Normal quantiles given mu, V
+                      TruthP = p.above,   # based on generated data
+                      phat = ours$Est,  # our estimator
+                      phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+                      
+                      # method of calculating CI: exponentiate logit or not?
+                      Method = "Boot", 
+                      
+                      # CI performance
+                      Cover = covers(expected, boot.lo, boot.hi),
+                      
+                      Width = boot.hi - boot.lo )
+      
+      rows = add_row( rows,
+                      TrueMean = p$mu,
+                      EstMean = NA,
+                      MeanCover = NA,
+
+                      TrueVar = NA,
+                      EstVar = NA,
+                      VarCover = NA,
+
+                      TheoryP = expected,  # from Normal quantiles given mu, V
+                      TruthP = p.above,   # based on generated data
+                      phat = Phat.NP$Est,  # our estimator
+                      phatBias = Phat.NP$Est - expected, # phat estimator vs. true proportion above
+
+                      # method of calculating CI: exponentiate logit or not?
+                      Method = "Nonparametric",
+
+                      # CI performance
+                      Cover = covers(expected, Phat.NP$lo, Phat.NP$hi),
+
+                      Width = Phat.NP$hi - Phat.NP$lo )
+
+      
+      # add in scenario parameters
+      rows$scen.name = scen
+      rows = as.data.frame( merge(rows, scen.params) )
+      rows
+   
 }  ### end parallelized loop
 
 } )[3]  # end timer
-
 
 
 
@@ -320,10 +416,13 @@ head(rs)
 # time in seconds
 rep.time
 
-# COMMENT OUT BELOW PART TO RUN ON CLUSTER
+# ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
 # see results
 rs %>% group_by(Method) %>% summarise(coverage = mean(Cover, na.rm=TRUE))
 rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
+rs %>% group_by(Method) %>% summarise(bias = mean(phat, na.rm=TRUE))
+# bias
+
 
 
 
