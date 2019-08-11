@@ -12,8 +12,6 @@ setwd(path)
 k = c(10, 20, 50)
 mu = 0.5  # mean of true effects (log-RR)
 V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
-#q = c( 0.5, 0.63 ) # SCENARIO 2 so that expected = 10% for V = 0.1^2
-#muN = c(300)
 muN = NA # just a placeholder; to be filled in later
 minN = c( 100, 800 )
 sd.w = 1

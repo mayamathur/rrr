@@ -33,6 +33,7 @@ library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
 library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
 library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
 
+
 # for use in ml load R
 # install.packages( c("doParallel", "foreach", "mvtnorm", "StepwiseTest", "matrixcalc"), lib = "/home/groups/manishad/Rpackages/" )
 
@@ -51,14 +52,16 @@ rm(list=ls())
 # lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
 k = 10  # running now on Sherlock
 mu = 0.5
-V = 0.0025
-q = 0.63
-minN = 300
-muN = 350
+V = 0.5
+minN = 800
+muN = NA # placeholder only
 sd.w = 1
 tail="above"
 
-sim.reps = 500  # reps to run in this iterate; leave this alone!
+
+# sim.reps = 500  # reps to run in this iterate; leave this alone!
+# boot.reps = 1000
+sim.reps = 100
 boot.reps = 1000
 
 # matrix of scenario parameters
@@ -106,8 +109,8 @@ source("functions_MAM.R")
 # set the number of cores
 registerDoParallel(cores=16)
 
-#scen = "vv"# k = 50
-scen = "uu"  # k=20
+
+scen = "a"  
 
 ######### END OF LOCAL PART #########
 
@@ -202,19 +205,14 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                   muN = p$muN, 
                   minN = p$minN,
                   sd.w = p$sd.w )
-    
-    # DEBUGGING
-    # setwd("/home/groups/manishad/MAM/sim_results")
-    # write.csv( d, paste( "dataset_d", i, ".csv", sep="_" ) )
-    
+
     # true population proportion of studies with ES > q
     # DEBUGGING
     mytry = try( sum( d$Mi > p$q ) / length( d$Mi ) )
     if("try-error" %in% class(mytry)) browser()
     p.above = sum( d$Mi > p$q ) / length( d$Mi )
     
-    ##### Compute Our Estimators #####
-    
+    ##### Compute Parametric Estimators #####
     # fit RE model
     m = rma.uni( yi = d$yi,
                  vi = d$vyi,
@@ -244,15 +242,6 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     
     
     ##### Get Bootstrapped CI #####
-    
-    # for code-writing only
-    # d = sim_data( k = 50, 
-    #               mu = .5, 
-    #               V = .4,
-    #               muN = 350, 
-    #               minN = 300,
-    #               sd.w = 1 )
-    
     boot.res = boot( data = d, 
                      parallel = "multicore",
                      R = boot.reps, 
@@ -282,7 +271,6 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     boot.hi = bootCIs$bca[5]
     
     
-    
     # fill in new row of summary dataframe with bias, coverage, and CI width for DM and bootstrap
     # dataframe with 3 rows, one for each method
     rows =     data.frame( TrueMean = p$mu,
@@ -291,7 +279,8 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                            
                            TrueVar = p$V,
                            EstVar = t2,
-                           VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"], CIs$random["tau^2", "ci.ub"] ),
+                           VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                              CIs$random["tau^2", "ci.ub"] ),
                            
                            TheoryP = expected,  # from Normal quantiles given mu, V
                            TruthP = p.above,   # based on generated data
@@ -331,9 +320,10 @@ head(rs)
 # time in seconds
 rep.time
 
+# COMMENT OUT BELOW PART TO RUN ON CLUSTER
 # see results
-# rs %>% group_by(Method) %>% summarise(coverage = mean(Cover, na.rm=TRUE))
-# rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
+rs %>% group_by(Method) %>% summarise(coverage = mean(Cover, na.rm=TRUE))
+rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
 
 
 
