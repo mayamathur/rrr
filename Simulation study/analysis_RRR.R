@@ -1,0 +1,277 @@
+
+# avoid saving old copies of objects
+rm(list=ls())
+
+#################### HELPER FNS ####################
+
+# plot one level of heterogeneity  
+plot_group = function( .level,
+                       .title,
+                       .ylab = "Coverage",
+                       .include.logit = FALSE,
+                       .legend = TRUE,
+                       .y.name,
+                       .limits = c(0.7, 1), 
+                       .breaks = seq(0,1,.1) ) {
+
+  if ( .include.logit == TRUE ) {
+    temp = res.all[ res.all$V == .level, ] 
+  } else {
+    temp = res.all[ res.all$V == .level &
+                      res.all$Method != "Logit", ]
+  }
+  
+  p = 
+    ggplot( temp, aes_string( x="k", y=.y.name, color="Method" ) ) +
+    #ggplot( temp, aes_string( x="k", y=.y.name, color="Method.pretty", alpha = "prop.finished" ) ) +
+    geom_line(lwd=1) +
+    geom_point(size=2) +
+    theme_bw() +
+    scale_color_manual(values=colors) +
+    scale_alpha_continuous( limits = c(0,1) ) +
+    geom_hline(yintercept = 0.95, linetype=2) +
+    scale_y_continuous( limits=.limits, breaks=.breaks ) +
+    ylab(.ylab) +
+    ggtitle( .title ) +
+    facet_grid( muN.pretty ~ TheoryP.pretty )
+    #facet_grid( TheoryP.pretty ~ muN.pretty )
+  
+  if ( .legend == TRUE ) {
+    return(p)
+  } else {
+    return(p + theme(legend.position="none"))
+  }
+  
+}  
+
+library(plyr)
+library(dplyr)
+
+#################### READ IN DATA ####################
+
+
+setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Data/Simulation study results/2018-9-10 add P=0.15")
+s3 = read.csv("stitched.csv")
+
+# previous results (P=0.20)
+setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Data/Simulation study results/2018-9-6 add P=0.20")
+s2 = read.csv("stitched.csv")
+
+# previous results (all others)
+setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Data/Simulation study results/2018-8-28 BCa with 10K iterates")
+s1 = read.csv("stitched.csv")
+
+
+s = rbind(s1, s2, s3)
+s = s[ !is.na(s$scen.name), ]  # gets rid of weird NA rows, but not those related to sim failures
+s = droplevels(s)
+table(s$scen.name)
+
+
+# what percent of the reps were NOT NA (e.g., didn't hit an error about infinite w due to few iterates or Fisher convergence)?
+prop.finished = s %>% group_by(scen.name) %>%
+                summarise( prop.finished = sum( !is.na(phat) ) / length(phat) )
+s = merge(s, prop.finished)
+
+# all scenarios had <10% missing data :)
+min(prop.finished$prop.finished)
+
+
+#################### DATA WRANGLING ####################
+
+# name the simulation reps
+n.methods = 3
+s$sim.rep = rep( 1:( nrow(s) / n.methods ), each = n.methods )
+
+
+# for plotting joy
+s$plot.panel = paste( expression(tau^2), " = ", s$V, 
+                      "; q = ", s$q,
+                      "; true P = ", s$TheoryP,
+                      sep = "" )
+
+# indicate reps in which logit method yielded no CI
+# hence the mean coverage by simulation rep is NA 
+keep.rep = s %>% group_by(sim.rep) %>%
+  summarise( logit.was.NA = is.na( mean(Cover) ) )
+
+# logit CI fails for 4% of all reps
+prop.table(table(keep.rep$logit.was.NA))
+
+# merge into main dataset
+s = merge( s, keep.rep, by = "sim.rep")
+prop.table(table(s$logit.was.NA))
+
+s$Cover = as.numeric(s$Cover)
+s$VarCover = as.numeric(s$VarCover)
+s$MeanCover = as.numeric(s$MeanCover)
+
+# summarize results, leaving NA if ANY reps failed (for logit)
+res.all = s %>% 
+  group_by(scen.name, Method) %>%
+  summarise_if( is.numeric, function(x) mean(x) )
+ # summarise_if( is.numeric, function(x) mean(x, na.rm=TRUE) )
+
+res.all = res.all[ !is.na(res.all$Method), ]
+
+# for plotting joy
+res.all$muN.pretty = paste( "E[N] = ", res.all$muN )
+res.all$TheoryP.pretty = paste( "True P = ",
+                                format(round(res.all$TheoryP, 2), nsmall = 2) )
+
+# also for plotting joy
+library(car)
+res.all$Method = recode( res.all$Method, " 'Original'='Theory' " )
+
+
+
+#################### PLOTS ####################
+
+# for scenarios in which logit has ANY missing data, does not show 
+#  that line because would be an unfair comparison to original method,
+#  which always works
+
+library(ggplot2)
+
+colors=c("orange", "black", "red")
+
+
+
+##### Coverage Plot for Each Level of Tau^2 #####
+limits = c(0.8, 1)
+breaks = seq( min(limits), max(limits), 0.05)
+string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
+p1 = plot_group( .level = unique( res.all$V )[1],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "Cover",
+                 .limits= limits,
+                 .breaks = breaks
+                 )
+
+string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
+p2 = plot_group( .level = unique( res.all$V )[3],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .limits= limits,
+                 .breaks = breaks,
+                 .y.name = "Cover" )
+
+string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
+p3 = plot_group( .level = unique( res.all$V )[2],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .limits= limits,
+                 .breaks = breaks,
+                 .y.name = "Cover" )
+
+library(gridExtra)
+cov = grid.arrange(p1, p2, p3, nrow=3)
+setwd("~/Desktop")
+ggsave( filename = paste("coverage_MAM.png"),
+        plot = cov, path=NULL, width=12, height=14, units="in")
+
+
+
+
+##### CI Width for Each Level of Tau^2 #####
+string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
+p1 = plot_group( .level = unique( res.all$V )[1],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "Width",
+                 .ylab = "CI width",
+                 .limits = c(0,1),
+                 .breaks = seq(0,1,.2))
+
+string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
+p2 = plot_group( .level = unique( res.all$V )[3],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "Width",
+                 .ylab = "CI width",
+                 .limits = c(0,1),
+                 .breaks = seq(0,1,.2))
+
+string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
+p3 = plot_group( .level = unique( res.all$V )[2],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "Width",
+                 .ylab = "CI width",
+                 .limits = c(0,1),
+                 .breaks = seq(0,1,.2))
+
+library(gridExtra)
+plots = grid.arrange(p1, p2, p3, nrow=3)
+ggsave( filename = paste("width_MAM.png"),
+        plot = plots, path=NULL, width=12, height=14, units="in")
+
+
+#################### RULES OF THUMB ####################
+
+rule_of_thumb = function( Pmin ) {
+  min.cover = min( res.all$Cover[ res.all$TheoryP >= Pmin & 
+                                    res.all$Method == "Theory"],
+                   na.rm = TRUE )
+  mean.cover =   mean( res.all$Cover[ res.all$TheoryP >= Pmin &
+                                        res.all$Method == "Theory" ],
+                       na.rm = TRUE )
+  
+  print( paste("Min: ", min.cover, sep="") )
+  print( paste("Mean: ", mean.cover, sep="") )
+  print("")
+}
+
+
+# choose a rule of thumb by looking at min and mean coverage in scenarios 
+#  fulfilling the rule
+vapply( c(0.30, 0.20, 0.15, 0.10),
+        rule_of_thumb,
+        FUN.VALUE = "sdf" )
+
+
+
+# proportion of all scenarios with coverage > 0.90
+agg.rot = res.all %>% 
+group_by( Method ) %>%
+            filter( TheoryP >= 0.15 & 
+                      Method != "Logit" ) %>%
+            summarise( cov.over.0.90 = mean( Cover > 0.90, na.rm = TRUE ),
+                       cov.over.0.85 = mean( Cover > 0.85, na.rm = TRUE ),
+                      min.cov = min( Cover, na.rm = TRUE ),
+                      mean.cov = mean( Cover, na.rm = TRUE )  )
+
+View(agg.rot)
+
+
+agg.all = res.all %>% group_by(  
+                            Method 
+            ) %>%
+              filter( Method != "Logit" ) %>%
+              summarise( cov.over.0.90 = mean( Cover > 0.90, na.rm = TRUE ),
+                         cov.over.0.85 = mean( Cover > 0.85, na.rm = TRUE ),
+                         min.cov = min( Cover, na.rm = TRUE ),
+                         mean.cov = mean( Cover, na.rm = TRUE )  )
+View(agg.all)
+
+            
+# save all analysis objects for manuscript
+setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Markdown manuscript")
+
+save.image("all_simulation_objects.RData")
+
+# save( list = ls(agg.rot, agg.all),
+#       file = "all_simulation_objects.RData" )
+
+
+
+
+
+

@@ -1,0 +1,16 @@
+{
+    "contents" : "library(testthat)\nlibrary(Replicate)\n\n\n###################### EVALUE: ANNALS PAPER EXAMPLES ###################### \n\ntest_that(\"Should reject bad inputs in pred_int\", {\n\n  expect_error( pred_int( orig.y = .5, orig.vy = .2, rep.y = c( .1, .2 ), rep.vy = c( .2 ) ) )\n  \n  expect_error( pred_int( orig.y = .5, orig.vy = c(.2, .1), rep.y = c( .1, .2 ), rep.vy = c( .2, .1 ) ) )\n  \n  expect_error( pred_int( orig.y = c(.5, .3), orig.vy = c(.2, .4), rep.y = .1, rep.vy = .2 ) )\n  \n  rep.y = c(.1, -2, 0.5, -0.8)\n  pi = pred_int( orig.y = .6, orig.vy = .4, rep.y = rep.y, rep.vy = c(.2, .2, 0.4, .001) )\n  inside = ( rep.y < pi$int.hi ) & ( rep.y > pi$int.lo )\n  \n  expect_equal( inside, pi$rep.inside )\n  \n})\n",
+    "created" : 1509575164257.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "359482542",
+    "id" : "9C0AFB8",
+    "lastKnownWriteTime" : 1509577055,
+    "path" : "~/Dropbox/Personal computer/Independent studies/RRR estimators/Replicate/tests/testthat/testthat.R",
+    "project_path" : "tests/testthat/testthat.R",
+    "properties" : {
+    },
+    "source_on_save" : false,
+    "type" : "r_source"
+}
