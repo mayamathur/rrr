@@ -1,4 +1,4 @@
-########################### SET SIMULATION PARAMETERS MATRIX ###########################
+3########################### SET SIMULATION PARAMETERS MATRIX ###########################
 
 # FOR CLUSTER USE
 path = "/home/groups/manishad/MAM"

@@ -43,73 +43,73 @@ registerDoParallel(cores=16)
 ######### END OF CLUSTER PART #########
 
 
-# ######### FOR LOCAL USE #########
-# 
-# rm(list=ls())
-# 
-# # # isolate a surprising scenario
-# # # k = 10  # running now on Sherlock
-# # k = 50 # the one previously run on Sherlock
-# # mu = 0.5
-# # V = 0.0025
-# # q = 0.63
-# # minN = 300
-# # muN = 350
-# # sd.w = 1
-# # tail="above"
-# 
-# sim.reps = 500  # reps to run in this iterate; leave this alone!
-# boot.reps = 1000
-# 
-# # matrix of scenario parameters
-# scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w)
-# names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w" )
-# # avoid naming scenario capital "F" because gets interpreted as FALSE
-# my.letters = c(letters,
-#                paste(letters,letters,sep=""),
-#                paste(letters,letters,letters,sep=""),
-#                paste(letters,letters,letters,letters,sep=""),
-#                paste(letters,letters,letters,letters,letters,sep=""),
-#                paste(letters,letters,letters,letters,letters,letters,sep="")
-# )
-# 
-# #start.at = which( my.letters == "aaaa" )
-# start.at = 1
-# scen.params$scen.name = my.letters[ start.at : ( start.at + nrow(scen.params) - 1 ) ]
-# ( n.scen = length(scen.params[,1]) )
-# 
-# # avoid doing all factorial combinations of muN and minN this way
-# scen.params$muN = scen.params$minN + 50
-# 
-# 
-# # WAS FOR LOCAL USE
-# library(foreach)
-# library(doParallel)
-# library(dplyr)
-# library(boot)
-# 
-# setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Manuscript code/Simulation study/For Sherlock")
+######### FOR LOCAL USE #########
+
+rm(list=ls())
+
+# isolate a bad scenario
+# lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
+k = 10  # running now on Sherlock
+mu = 0.5
+V = 0.0025
+q = 0.63
+minN = 300
+muN = 350
+sd.w = 1
+tail="above"
+
+sim.reps = 500  # reps to run in this iterate; leave this alone!
+boot.reps = 1000
+
+# matrix of scenario parameters
+scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w)
+names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w" )
+# avoid naming scenario capital "F" because gets interpreted as FALSE
+my.letters = c(letters,
+               paste(letters,letters,sep=""),
+               paste(letters,letters,letters,sep=""),
+               paste(letters,letters,letters,letters,sep=""),
+               paste(letters,letters,letters,letters,letters,sep=""),
+               paste(letters,letters,letters,letters,letters,letters,sep="")
+)
+
+#start.at = which( my.letters == "aaaa" )
+start.at = 1
+scen.params$scen.name = my.letters[ start.at : ( start.at + nrow(scen.params) - 1 ) ]
+( n.scen = length(scen.params[,1]) )
+
+# avoid doing all factorial combinations of muN and minN this way
+scen.params$muN = scen.params$minN + 50
+
+
+# WAS FOR LOCAL USE
+library(foreach)
+library(doParallel)
+library(dplyr)
+library(boot)
+
+setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Manuscript code/Simulation study/For Sherlock")
+source("functions_MAM.R")
+
+# # ~~~ DEBUGGING: FOR CLUSTER
+# # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+# library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+# setwd("/home/groups/manishad/MAM")
 # source("functions_MAM.R")
-# 
-# # # ~~~ DEBUGGING: FOR CLUSTER
-# # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-# # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-# # setwd("/home/groups/manishad/MAM")
-# # source("functions_MAM.R")
-# 
-# # set the number of cores
-# registerDoParallel(cores=16)
-# 
-# #scen = "vv"# k = 50
-# scen = "uu"  # k=20
-# 
-# ######### END OF LOCAL PART #########
+
+# set the number of cores
+registerDoParallel(cores=16)
+
+#scen = "vv"# k = 50
+scen = "uu"  # k=20
+
+######### END OF LOCAL PART #########
 
 
 ########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION  ###########################
@@ -182,7 +182,6 @@ write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
 # this will be overwritten if the rep finished successfully
 
 ######### end of writing placeholder file
-
 
 
 

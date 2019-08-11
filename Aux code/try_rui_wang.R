@@ -34,6 +34,7 @@ library(MetaUtility)
 d$main.fis = r_to_z( d$rMain )
 # add SE of Fisher's z
 d$main.SE = sqrt( 1 / ( d$NT - 3 ) )
+d$vi = d$main.SE^2
 
 
 ######################### APPLY RUI'S CODE OFF THE SHELF #########################
@@ -90,65 +91,58 @@ quantile( my_ens(yi = d$main.fis,
 
 ######################### ANALOG FOR PHAT #########################
 
+##### Nonparametric Phat #####
 
-# warmup: p-values for the proportion below q = 0.1
-# parametrically, got 28% (0%, 63%) for proportion ABOVE
+setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+source("functions_RRR.R")
+
+##### Compare to Parametric #####
 q = 0.18
-pct.vec = seq( 0, 1, 0.001 )
-
-pvals = pct.vec %>% map( function(x) phi( theta = d$main.fis,
-                                        theta.sd = d$main.SE,
-                                        mu = q,
-                                        pct = x,
-                                        nperm=2000 ) ) %>%
-  unlist # return a double-type vector instead of list
-
-( Phat.NP = pct.vec[ which.max( pvals ) ] )
-# sloppy version of CI
-( CI.lo.NP = pct.vec[ pct.vec < Phat.NP ][ which.min( abs( pvals[ pct.vec < Phat.NP ] - 0.05 ) ) ] )
-( CI.hi.NP = pct.vec[ pct.vec > Phat.NP ][ which.min( abs( pvals[ pct.vec > Phat.NP ] - 0.05 ) ) ] )
-
-
-# compare estimate and CI to parametric one for proportion below
 meta = rma.uni( yi = d$main.fis,
                 sei = d$main.SE, 
                 method = "REML" )
 
-# for bootstrap
-d$vi = d$main.SE^2
-( Phat.ML = prop_stronger( q = q,
-               M = meta$b,
-               t2 = meta$tau2,
-               se.M = meta$se,
-               se.t2 = meta$se.tau2,
-               tail = "below",
-               
-               dat = d, 
-               yi.name = "main.fis",
-               vi.name = "vi" ) )
+( Phat.ML = MetaUtility::prop_stronger( q = q,
+                                        M = meta$b,
+                                        t2 = meta$tau2,
+                                        se.M = meta$se,
+                                        se.t2 = meta$se.tau2,
+                                        tail = "above",
+                                        
+                                        dat = d, 
+                                        yi.name = "main.fis",
+                                        vi.name = "vi" ) )
+
+
+( Phat.NP = prop_stronger_np( q = q,
+                              yi = d$main.fis,
+                              vi = d$vi,
+                              tail = "above",
+                              R = 2000,
+                              return.vectors = TRUE) )
+
 
 # ** plot the pcts vs. the p-values
-ggplot( data = data.frame( pct = pct.vec, pval = pvals ),
-        aes( x = pct, y = pval ) ) +
+ggplot( data = data.frame( pcts = Phat.NP$pcts, pvals = Phat.NP$pvals ),
+        aes( x = pcts, y = pvals ) ) +
   
   # nonparametric ones
-  geom_vline( xintercept = CI.lo.NP, color = "red", lty = 2 ) +
-  geom_vline( xintercept = CI.hi.NP, color = "red", lty = 2 ) +
+  geom_vline( xintercept = Phat.NP$res$lo, color = "red", lty = 2 ) +
+  geom_vline( xintercept = Phat.NP$res$hi, color = "red", lty = 2 ) +
   geom_hline( yintercept = 0.05, lty = 2, color = "gray" ) + # alpha
-  geom_vline( xintercept = Phat.NP, color = "red" ) +
+  geom_vline( xintercept = Phat.NP$res$Est, color = "red" ) +
   
   # parametric ones
   geom_vline( xintercept = Phat.ML$lo, color = "blue", lty = 2 ) +
   geom_vline( xintercept = Phat.ML$hi, color = "blue", lty = 2 ) +
   geom_vline( xintercept = Phat.ML$Est, color = "blue" ) +
   
+  scale_x_continuous( breaks = seq(0, 1, 0.1) ) +
+  xlab("Estimation proportion above q") +
+  ylab("2-sided p-value") +
+  
   geom_point() + 
   theme_minimal()
-
-# HUH...NP is much narrower! (for q = 0.1, for which prop_stronger doesn't bootstrap)
-
-# Next up: Adjust Rui's code directly to do more principled grid search.
-#  Hopefully will be similar to above. 
 
 
 

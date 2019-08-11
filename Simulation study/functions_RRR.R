@@ -263,6 +263,123 @@ power = function(scen,
 }
 
 
+########################### FN: NONPARAMETRIC INFERENCE FROM RUI WANG PAPER ###########################
+
+# verbatim from their paper
+
+##########################################################################
+##########################################################################
+### theta: treatment effect estimates ###
+### (usually a vector of length K, K is the number of studies) ###
+### theta.sd: estimated standard error of theta ###
+### (usually a vector of same length as theta) ###
+### mu: the specified value in the null hypothesis. ###
+### pct: the percentile of interest ###
+### 0.5=median, ###
+### 0.25=25th percentile, ###
+### 0.75=75th percentile. ###
+### nperm: number of realizations in the conditional test ###
+
+##########################################################################
+### Output a 2-sided p-value. ###
+##########################################################################
+
+phi <- function(theta=theta,
+                theta.sd=theta.sd,
+                mu=mu0,
+                pct=0.5,
+                nperm=2000) {
+  
+  K<-length(theta)
+  
+  # "score" is equivalent to kth contribution of sum in 
+  #  first eq. on page 4 (see my note in sidebar for equivalence)
+  score<-pnorm( (mu-theta)/theta.sd ) - 0.5  
+  # OBSERVED test stat
+  stat<-sum(score)
+  
+  # initialize what will be the test stat vector UNDER H0
+  # i.e., Tstar in paper
+  test.stat<-rep(0,nperm)
+  
+  # draw Deltas for nperm iterations
+  # this is the H0 distribution
+  i<-1
+  while (i<=nperm) {
+    # here they use "ref1" and "ref2" (0/1) instead of Delta (1/-1)
+    #  for computational convenience
+    ref1 <- rbinom(K,1,pct)  
+    ref2 <- 1-ref1
+    # this is the second eq. on page 4 of paper
+    test.stat[i] <- sum( (abs(score)) * ref1 - (abs(score))*ref2 )
+    i<-i+1
+  }
+  
+  # compare test.stat (which is under H0) to observed one
+  p1 <- mean(as.numeric(test.stat<=stat))
+  p2 <- mean(as.numeric(test.stat>=stat))
+  p3 <- mean(as.numeric(test.stat==stat))
+  pval <- 2*min(p1,p2) - p3
+  return(pval)
+}
+
+
+# this is my own fn
+# a simpler grid search across Phat values than their search across percentiles
+# since Phat is conveniently bounded
+library(dplyr)
+library(purrr)
+
+prop_stronger_np = function(q,
+                            yi,
+                            vi,
+                            CI.level = 0.95, 
+                            tail = NA,
+                            R = 2000,
+                            return.vectors = FALSE ) {
+  
+
+  # warmup: p-values for the proportion below q = 0.1
+  # parametrically, got 28% (0%, 63%) for proportion ABOVE
+  pct.vec = seq( 0, 1, 0.001 )
+
+  pvals = pct.vec %>% map( function(x) phi( theta = yi,
+                                            theta.sd = sqrt(vi),
+                                            mu = q,
+                                            pct = x,
+                                            nperm = R ) ) %>%
+                          unlist # return a double-type vector instead of list
+  
+  # NPMLE: the value of Phat.below with the largest p-value?
+  Phat.below.NP = pct.vec[ which.max( pvals ) ]
+  
+  # get CI limits
+  alpha = 1 - CI.level
+  ( CI.lo.NP = pct.vec[ pct.vec < Phat.below.NP ][ which.min( abs( pvals[ pct.vec < Phat.below.NP ] - alpha ) ) ] )
+  ( CI.hi.NP = pct.vec[ pct.vec > Phat.below.NP ][ which.min( abs( pvals[ pct.vec > Phat.below.NP ] - alpha ) ) ] )
+  
+  # if user wanted the upper tail, reverse everything
+  if ( tail == "below" ) {
+    res = data.frame(Est = Phat.below.NP,
+                       lo = CI.lo.NP,
+                       hi = CI.hi.NP )
+    pcts = pct.vec
+  }
+  
+  # if user wanted the upper tail, reverse everything
+  if ( tail == "above" ) {
+    res = data.frame( Est = 1 - Phat.below.NP,
+                       lo = 1 - CI.hi.NP,
+                       hi = 1 - CI.lo.NP )
+    pcts = 1 - pct.vec
+  }
+  
+  if ( return.vectors == FALSE ) return(res)
+  if ( return.vectors == TRUE ) invisible( list(res = res, 
+                                             pcts = pcts,
+                                             pvals = pvals) )
+}
+
 
 ########################### FN: STITCH RESULTS FILES ###########################
 
