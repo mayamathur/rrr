@@ -4,35 +4,34 @@
 path = "/home/groups/manishad/RRR"
 setwd(path)
 
-# one scenario
-k = c(10)
-mu = 0.5  # mean of true effects (log-RR)
-V = c( 0.5^2 )  # variance of true effects
-#V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
-muN = NA # just a placeholder; to be filled in later
-#minN = c( 100, 800 )
-minN = c( 800 )
-sd.w = 1
-tail = "above"
-true.effect.dist = c("normal", "expo")
-
-
-# # # full set of scenarios
-# k = c(5, 10, 15, 20, 50)
+# # one scenario - worked locally and on Sherlock
+# k = c(10)
 # mu = 0.5  # mean of true effects (log-RR)
-# #V = c( 0.5^2 )  # variance of true effects
-# V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+# V = c( 0.5^2 )  # variance of true effects
+# #V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
 # muN = NA # just a placeholder; to be filled in later
-# minN = c( 100, 800 )
+# #minN = c( 100, 800 )
+# minN = c( 800 )
 # sd.w = 1
 # tail = "above"
 # true.effect.dist = c("normal", "expo")
 
 
+# full set of scenarios
+k = c(5, 10, 15, 20, 50)
+mu = 0.5  # mean of true effects (log-RR)
+V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+muN = NA # just a placeholder; to be filled in later
+minN = c( 100, 800 )
+sd.w = 1
+tail = "above"
+true.effect.dist = c("normal", "expo")
+
+
 # only running P = 0.20 to supplement previous sim results
 # set q to be the quantiles such that TheoryP is 0.2 for every V
-#TheoryP = c(0.05, 0.1, 0.2, 0.5)
-TheoryP = 0.1
+TheoryP = c(0.05, 0.1, 0.2, 0.5)
+#TheoryP = 0.1
 
 qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 
@@ -107,14 +106,14 @@ sbatch_params <- data.frame(jobname,
                             stringsAsFactors = F,
                             server_sbatch_path = NA)
 
-generateSbatch(sbatch_params, runfile_path)
+#generateSbatch(sbatch_params, runfile_path)
 
 n.files
 
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 1:n.files) {
+for (i in 1:50) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   system( paste("sbatch -p qsu /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds

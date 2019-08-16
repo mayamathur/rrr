@@ -9,7 +9,10 @@
 # 3.) For NP point estimate with small k or non-normal true effects, what is best:
 #  NP - sign test estimate or NP - ensemble estimate?
 
-# IDEALLY INCREASE BOOT REPS! 
+# When results come back, remember I halved the boot.reps from 10,000 to 5,000
+# so check if boot performance is similar to in MAM supplement.
+
+# Bookmark: Make sure we're writing results for NP ensemble. 
 
 ######### FOR CLUSTER USE #########
 
@@ -329,14 +332,14 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                                   return.vectors = FALSE)
     
     ##### Get Nonparametric Phat and CI (Wang ensemble) #####
-    write.csv("nothing", "flag1.csv")
+    #write.csv("nothing", "flag1.csv")
     
     ens = my_ens( yi = d$yi, 
                   sei = sqrt(d$vyi) )
     if ( p$tail == "above" ) Phat.NP.ens = sum(ens > c(p$q)) / length(ens)
     if ( p$tail == "below" ) Phat.NP.ens = sum(ens < c(p$q)) / length(ens)
     
-    write.csv(Phat.NP.ens, "Phat_NP_ens.csv")
+    #write.csv(Phat.NP.ens, "Phat_NP_ens.csv")
     
  
       rows =     data.frame( TrueMean = p$mu,
@@ -412,29 +415,29 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
 
                       Note = NA)
       
-      # rows = add_row( rows,
-      #                 TrueMean = p$mu,
-      #                 EstMean = NA,
-      #                 MeanCover = NA,
-      #                 
-      #                 TrueVar = NA,
-      #                 EstVar = NA,
-      #                 VarCover = NA,
-      #                 
-      #                 TheoryP = expected,  # from Normal quantiles given mu, V
-      #                 TruthP = p.above,   # based on generated data
-      #                 phat = Phat.NP.ens,  # nonparametric estimator
-      #                 phatBias = Phat.NP.ens - expected, # phat estimator vs. true proportion above
-      #                 
-      #                 # method of calculating CI: exponentiate logit or not?
-      #                 Method = "NP ensemble",
-      #                 
-      #                 # CI performance
-      #                 Cover = NA,
-      #                 
-      #                 Width = NA,
-      #                 
-      #                 Note = NA)
+      rows = add_row( rows,
+                      TrueMean = p$mu,
+                      EstMean = NA,
+                      MeanCover = NA,
+
+                      TrueVar = NA,
+                      EstVar = NA,
+                      VarCover = NA,
+
+                      TheoryP = expected,  # from Normal quantiles given mu, V
+                      TruthP = p.above,   # based on generated data
+                      phat = Phat.NP.ens,  # nonparametric estimator
+                      phatBias = Phat.NP.ens - expected, # phat estimator vs. true proportion above
+
+                      # method of calculating CI: exponentiate logit or not?
+                      Method = "NP ensemble",
+
+                      # CI performance
+                      Cover = NA,
+
+                      Width = NA,
+
+                      Note = NA)
 
 
       # add in scenario parameters

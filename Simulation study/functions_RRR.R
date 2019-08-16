@@ -439,6 +439,7 @@ stitch_files = function(.results.singles.path, .results.stitched.write.path=.res
   }
   
   s = s[-1,]  # delete annoying NA row
+  s$file.name = keepers[i] 
   write.csv(s, paste(.results.stitched.write.path, .stitch.file.name, sep="/") )
   return(s)
 }

@@ -9,7 +9,7 @@ source("functions_RRR.R")
 
 s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/long",
                  .results.stitched.write.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
-                 .name.prefix = "long",
+                 .name.prefix = "long_results",
                  .stitch.file.name="stitched.csv")
 
 # sneak peek
@@ -21,13 +21,14 @@ library(cli, lib.loc = "/home/groups/manishad/Rpackages/")
 
 # proportion of successful reps (no note)
 s %>% group_by(scen.name) %>%
-  summarise( mean( !is.na(Note) ) )
+  summarise( mean( is.na(Note) ),
+             n() )
 
 s %>% group_by(scen.name, Method, true.effect.dist) %>%
-  summarise( mean(Cover, na.rm=TRUE),
-             mean(phat), 
-             mean(Width),
-             n())
+  summarise( cover = mean(Cover, na.rm=TRUE),
+             phat = mean(phat), 
+             width = mean(Width),
+             n = n())
 
 # # how close are we to being done?
 # n.reps.per.scen = 500
