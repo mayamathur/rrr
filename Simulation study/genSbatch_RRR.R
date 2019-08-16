@@ -17,7 +17,8 @@ tail = "above"
 
 # only running P = 0.20 to supplement previous sim results
 # set q to be the quantiles such that TheoryP is 0.2 for every V
-TheoryP = c(0.05, 0.1, 0.2, 0.5)
+#TheoryP = c(0.05, 0.1, 0.2, 0.5)
+TheoryP = 0.1
 
 qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 
@@ -61,8 +62,8 @@ write.csv( scen.params, "scen_params.csv" )
 source("functions_RRR.R")
 
 # number of sbatches to generate (i.e., iterations within each scenario)
-n.reps.per.scen = 10
-n.reps.in.doParallel = 2
+n.reps.per.scen = 500
+n.reps.in.doParallel = 5
 ( n.files = ( n.reps.per.scen / n.reps.in.doParallel ) * n.scen )
 
 

@@ -19,12 +19,12 @@ print(p)
 
 # simulation reps to run within this job
 # this need to match n.reps.in.doParallel in the genSbatch script
-sim.reps = 2
-boot.reps = 100
+# sim.reps = 2
+# boot.reps = 100
 
 # # real versions
-# sim.reps = 5
-# boot.reps = 10000
+sim.reps = 5
+boot.reps = 10000
 
 
 
@@ -155,7 +155,7 @@ registerDoParallel(cores=16)
 
 # j is the number of simulation iterations to run sequentially
 # so for j=10, we are generating 10 observed datasets,
-# each with reps original datasets
+# each with reps  datasets
 #  and 500 bootstrap iterates for each
 
 # this for-loop is supposed to receive a single ROW of parameters
@@ -304,6 +304,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     bootCIs = boot.ci(boot.res, type="bca")
     boot.lo = bootCIs$bca[4]
     boot.hi = bootCIs$bca[5]
+    boot.median = median(boot.res$t)  # median Phat in bootstrap iterates
     
     ##### Get Nonparametric Phat and CI #####
     Phat.NP = prop_stronger_np( q = p$q,
@@ -377,7 +378,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                              phatBias = ours$Est - expected, # phat estimator vs. true proportion above
 
                              # method of calculating CI: exponentiate logit or not?
-                             Method = "Original",
+                             Method = "Parametric",
 
                              # CI performance
                              Cover = covers(expected, ours$lo, ours$hi),
@@ -385,35 +386,10 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                              Width = ours$hi - ours$lo,
 
                              Note = NA )
-
-      # rows = add_row( rows,
-      #                 TrueMean = p$mu,
-      #                 EstMean = M,
-      #                 MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-      # 
-      #                 TrueVar = p$V,
-      #                 EstVar = t2,
-      #                 VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-      #                                    CIs$random["tau^2", "ci.ub"] ),
-      # 
-      #                 TheoryP = expected,  # from Normal quantiles given mu, V
-      #                 TruthP = p.above,   # based on generated data
-      #                 phat = ours$Est,  # our estimator
-      #                 phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-      # 
-      #                 # method of calculating CI: exponentiate logit or not?
-      #                 Method = "Original",
-      # 
-      #                 # CI performance
-      #                 Cover = covers(expected, ours$lo, ours$hi),
-      # 
-      #                 Width = ours$hi - ours$lo,
-      # 
-      #                 Note = NA)
       
       rows = add_row( rows,
                       TrueMean = p$mu,
-                      EstMean = M,
+                      EstMean = M, 
                       MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
 
                       TrueVar = p$V,
@@ -423,8 +399,8 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
 
                       TheoryP = expected,  # from Normal quantiles given mu, V
                       TruthP = p.above,   # based on generated data
-                      phat = ours$Est,  # our estimator
-                      phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+                      phat = boot.median,  # note that this is the median of the bootstrap iterates
+                      phatBias = boot.median - expected, 
 
                       # method of calculating CI: exponentiate logit or not?
                       Method = "Boot",
@@ -435,30 +411,30 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                       Width = boot.hi - boot.lo,
 
                       Note = NA)
-      # 
-      # rows = add_row( rows,
-      #                 TrueMean = p$mu,
-      #                 EstMean = NA,
-      #                 MeanCover = NA,
-      # 
-      #                 TrueVar = NA,
-      #                 EstVar = NA,
-      #                 VarCover = NA,
-      # 
-      #                 TheoryP = expected,  # from Normal quantiles given mu, V
-      #                 TruthP = p.above,   # based on generated data
-      #                 phat = Phat.NP$Est,  # our estimator
-      #                 phatBias = Phat.NP$Est - expected, # phat estimator vs. true proportion above
-      # 
-      #                 # method of calculating CI: exponentiate logit or not?
-      #                 Method = "Nonparametric",
-      # 
-      #                 # CI performance
-      #                 Cover = covers(expected, Phat.NP$lo, Phat.NP$hi),
-      # 
-      #                 Width = Phat.NP$hi - Phat.NP$lo,
-      # 
-      #                 Note = NA)
+
+      rows = add_row( rows,
+                      TrueMean = p$mu,
+                      EstMean = NA,
+                      MeanCover = NA,
+
+                      TrueVar = NA,
+                      EstVar = NA,
+                      VarCover = NA,
+
+                      TheoryP = expected,  # from Normal quantiles given mu, V
+                      TruthP = p.above,   # based on generated data
+                      phat = Phat.NP$Est,  # our estimator
+                      phatBias = Phat.NP$Est - expected, # phat estimator vs. true proportion above
+
+                      # method of calculating CI: exponentiate logit or not?
+                      Method = "Nonparametric",
+
+                      # CI performance
+                      Cover = covers(expected, Phat.NP$lo, Phat.NP$hi),
+
+                      Width = Phat.NP$hi - Phat.NP$lo,
+
+                      Note = NA)
 
 
       # add in scenario parameters

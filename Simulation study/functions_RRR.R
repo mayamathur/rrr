@@ -24,6 +24,21 @@ sim_one_study = function( mu,
   # draw population true effect for this study
   Mi = rnorm( n=1, mean=mu, sd=sqrt(V) )
   
+  
+  # # ~~~modifications to allow non-normal true effects
+  # # draw population true effect for this study
+  # if ( true.effect.dist == "normal" ) {
+  #   Mi = rnorm( n=1, mean=mu, sd=sqrt(V) )
+  # }
+  # 
+  # if ( true.effect.dist == "expo" ) {
+  #   # set the rate so the heterogeneity is correct
+  #   Mi = rexp( n = 1, rate = sqrt(1/V) )
+  #   # now the mean is sqrt(V) rather than mu
+  #   # shift to have the correct mean (in expectation)
+  #   Mi = Mi + (mu - sqrt(V))
+  # }
+  
   ###### Simulate Data For Individual Subjects ######
   
   # group assignments
