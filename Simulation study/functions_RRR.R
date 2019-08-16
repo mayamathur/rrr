@@ -327,9 +327,6 @@ phi <- function(theta=theta,
 # this is my own fn
 # a simpler grid search across Phat values than their search across percentiles
 # since Phat is conveniently bounded
-library(dplyr)
-library(purrr)
-
 prop_stronger_np = function(q,
                             yi,
                             vi,

@@ -1,21 +1,23 @@
-3########################### SET SIMULATION PARAMETERS MATRIX ###########################
+########################### SET SIMULATION PARAMETERS MATRIX ###########################
 
 # FOR CLUSTER USE
-path = "/home/groups/manishad/MAM"
+path = "/home/groups/manishad/RRR"
 setwd(path)
 
 # full set of scenarios
-k = c(10, 20, 50)
+k = c(10)
 mu = 0.5  # mean of true effects (log-RR)
-V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+V = c( 0.5^2 )  # variance of true effects
+#V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
 muN = NA # just a placeholder; to be filled in later
-minN = c( 100, 800 )
+#minN = c( 100, 800 )
+minN = c( 800 )
 sd.w = 1
 tail = "above"
 
 # only running P = 0.20 to supplement previous sim results
 # set q to be the quantiles such that TheoryP is 0.2 for every V
-TheoryP = c(0.05, 0.1, 0.2, 0.4)
+TheoryP = c(0.05, 0.1, 0.2, 0.5)
 
 qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 
@@ -41,32 +43,13 @@ scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
 table(scen.params$q, scen.params$V ); qmat  # each 
 
 
-# avoid naming scenario capital "F" because gets interpreted as FALSE
-my.letters = c(letters,
-               paste(letters,letters,sep=""),
-               paste(letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,letters,letters,letters,sep="")
-)
-
 #start.at = which( my.letters == "aaaa" )
-start.at = 150
-scen.params$scen.name = my.letters[ start.at : ( start.at + nrow(scen.params) - 1 ) ]
+start.at = 1
+scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
 ( n.scen = length(scen.params[,1]) )
 
 # avoid doing all factorial combinations of muN and minN this way
 scen.params$muN = scen.params$minN + 50
-
-
-
-# # ~~~~~~~~~~ TEMP
-# # ~~~~~~~~~ run only the ones where boot was doing a crappy job
-# to.run = c("bb", "cc", "dd", "j",  "k",  "l",  "tt", "uu", "vv") # "vv" is the weirdest one of all (large k and n)
-# to.run = c("tt", "uu", "vv")
-# scen.params = scen.params[ scen.params$scen.name %in% to.run, ]
-# n.scen = length(scen.params[,1])
 
 # write the csv file of params (to Sherlock)
 write.csv( scen.params, "scen_params.csv" )
@@ -75,7 +58,7 @@ write.csv( scen.params, "scen_params.csv" )
 ########################### GENERATE SBATCHES ###########################
 
 # load functions for generating sbatch files
-source("functions_MAM.R")
+source("functions_RRR.R")
 
 # number of sbatches to generate (i.e., iterations within each scenario)
 n.reps.per.scen = 500
@@ -83,7 +66,7 @@ n.reps.in.doParallel = 5
 ( n.files = ( n.reps.per.scen / n.reps.in.doParallel ) * n.scen )
 
 
-path = "/home/groups/manishad/MAM"
+path = "/home/groups/manishad/RRR"
 
 scen.name = rep( scen.params$scen.name, each = ( n.files / n.scen ) )
 jobname = paste("job", 1:n.files, sep="_")
@@ -103,7 +86,7 @@ sbatch_params <- data.frame(jobname,
                             user_email = "mmathur@stanford.edu",
                             tasks_per_node = 16,
                             cpus_per_task = 1,
-                            path_to_r_script = paste(path, "/doParallel_MAM.R", sep=""),
+                            path_to_r_script = paste(path, "/doParallel_RRR.R", sep=""),
                             args_to_r_script = paste("--args", jobname, scen.name, sep=" "),
                             write_path,
                             stringsAsFactors = F,
@@ -113,12 +96,11 @@ generateSbatch(sbatch_params, runfile_path)
 
 n.files
 
-# 5400 files
 # max hourly submissions seems to be 300, which is 12 seconds/job
-path = "/home/groups/manishad/MAM"
+path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 1:1800) {
-  system( paste("sbatch -p owners /home/groups/manishad/MAM/sbatch_files/", i, ".sbatch", sep="") )
+for (i in 1:4) {
+  system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds
 }
 
@@ -127,14 +109,13 @@ for (i in 1:1800) {
 
 ######## If Running Only Some Jobs To Fill Gaps ########
 
-
 # run in Sherlock ml load R
-path = "/home/groups/manishad/MAM"
+path = "/home/groups/manishad/RRR"
 setwd(path)
-source("functions_MAM.R")
+source("functions_RRR.R")
 
-missed.nums = sbatch_not_run( "/home/groups/manishad/MAM/sim_results/long",
-                              "/home/groups/manishad/MAM/sim_results",
+missed.nums = sbatch_not_run( "/home/groups/manishad/RRR/sim_results/long",
+                              "/home/groups/manishad/RRR/sim_results",
                               .name.prefix = "long_results",
                               .max.sbatch.num = 1080 )
 
@@ -142,5 +123,5 @@ missed.nums = sbatch_not_run( "/home/groups/manishad/MAM/sim_results/long",
 
 setwd( paste(path, "/sbatch_files", sep="") )
 for (i in missed.nums) {
-  system( paste("sbatch -p owners /home/groups/manishad/MAM/sbatch_files/", i, ".sbatch", sep="") )
+  system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
 }

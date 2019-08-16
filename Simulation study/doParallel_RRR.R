@@ -1,5 +1,4 @@
 
-
 ######### FOR CLUSTER USE #########
 
 # because Sherlock 2.0 restores previous workspace
@@ -11,7 +10,7 @@ jobname = args[1]
 scen = args[2]  # this will be a letter
 
 # get scen parameters
-setwd("/home/groups/manishad/MAM")
+setwd("/home/groups/manishad/RRR")
 scen.params = read.csv( "scen_params.csv" )
 p = scen.params[ scen.params$scen.name == scen, ]
 
@@ -32,12 +31,15 @@ library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
 library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
 library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
 library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
 
 
 # for use in ml load R
 # install.packages( c("doParallel", "foreach", "mvtnorm", "StepwiseTest", "matrixcalc"), lib = "/home/groups/manishad/Rpackages/" )
 
-source("functions_MAM.R")
+path = "/home/groups/manishad/RRR"
+setwd(path)
+source("functions_RRR.R")
 
 # set the number of cores
 registerDoParallel(cores=16)
@@ -48,17 +50,28 @@ registerDoParallel(cores=16)
 
 rm(list=ls())
 
-# isolate a bad scenario
-# lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
-k = 10  # running now on Sherlock
-mu = 0.5
-V = 0.5
-minN = 800
-muN = NA # placeholder only
-sd.w = 1
-tail="above"
+# # isolate a bad scenario
+# # lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
+# k = 10  # running now on Sherlock
+# mu = 0.5
+# V = 0.5
+# minN = 800
+# muN = NA # placeholder only
+# sd.w = 1
+# tail="above"
 
-TheoryP = c(0.10)
+# full set of scenarios
+k = c(10)
+mu = 0.5  # mean of true effects (log-RR)
+V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+muN = NA # just a placeholder; to be filled in later
+minN = c( 100, 800 )
+sd.w = 1
+tail = "above"
+
+# only running P = 0.20 to supplement previous sim results
+# set q to be the quantiles such that TheoryP is 0.2 for every V
+TheoryP = c(0.05, 0.1, 0.2, 0.5)
 
 qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 
@@ -81,22 +94,12 @@ TheoryP2 = 1 - pnorm( q = scen.params$q,
                       mean = scen.params$mu,
                       sd = sqrt(scen.params$V) )
 scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
-table(scen.params$q, scen.params$V ); qmat  # each 
+table(scen.params$q, scen.params$V ); qmat  # each
 
-
-# avoid naming scenario capital "F" because gets interpreted as FALSE
-my.letters = c(letters,
-               paste(letters,letters,sep=""),
-               paste(letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,letters,letters,sep=""),
-               paste(letters,letters,letters,letters,letters,letters,letters,sep="")
-)
 
 #start.at = which( my.letters == "aaaa" )
 start.at = 1
-scen.params$scen.name = my.letters[ start.at : ( start.at + nrow(scen.params) - 1 ) ]
+scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
 ( n.scen = length(scen.params[,1]) )
 
 # avoid doing all factorial combinations of muN and minN this way
@@ -104,16 +107,18 @@ scen.params$muN = scen.params$minN + 50
 
 
 
+
 # sim.reps = 500  # reps to run in this iterate; leave this alone!
 # boot.reps = 1000
-sim.reps = 500
-boot.reps = 1000
+sim.reps = 2
+boot.reps = 200
 
 
 library(foreach)
 library(doParallel)
 library(dplyr)
 library(boot)
+library(purrr)
 
 # read in helper fns
 setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
@@ -128,14 +133,14 @@ source("functions_RRR.R")
 # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
 # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
 # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-# setwd("/home/groups/manishad/MAM")
-# source("functions_MAM.R")
+# setwd("/home/groups/manishad/RRR")
+# source("functions_RRR.R")
 
 # set the number of cores
 registerDoParallel(cores=16)
 
 
-scen = "a"  
+scen = 1
 
 ######### END OF LOCAL PART #########
 
@@ -172,7 +177,9 @@ scen = "a"
 
 
 ########################### WRITE BLANK CSV FILE  ###########################
-# ~~~ udpate this if using more methods! 
+
+# how many rows to make
+n.methods = 4
 # this records that the rep started in case there is a problem with the bootstrapping
 placeholder = data.frame( TrueMean = NA,
                           EstMean = NA,
@@ -187,32 +194,26 @@ placeholder = data.frame( TrueMean = NA,
                           phat = NA,  # our estimator
                           phatBias = NA, # phat estimator vs. true proportion above
                           
-                          # method of calculating CI: exponentiate logit or not?
-                          Method = c( NA,
-                                      NA,
-                                      NA), 
+                          Method = rep(NA, n.methods), 
                           
                           # CI performance
-                          Cover = c( NA,
-                                     NA,
-                                     NA
-                          ), # coverage; vector with length 3
+                          Cover = rep(NA, n.methods),
                           
-                          Width = c( NA,
-                                     NA,
-                                     NA )
+                          Width = rep(NA, n.methods), 
+                          
+                          Note = rep("Sim failure", n.methods)
 )
 
 placeholder$scen.name = scen
 placeholder = merge( placeholder, scen.params )
 
-setwd("/home/groups/manishad/MAM/sim_results/long")
+setwd("/home/groups/manishad/RRR/sim_results/long")
 write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
 # this will be overwritten if the rep finished successfully
 
-######### end of writing placeholder file
 
 
+########################### RUN THE ACTUAL SIMULATION ###########################
 
 CI.level = 0.95
 
@@ -232,10 +233,12 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                   minN = p$minN,
                   sd.w = p$sd.w )
 
+    
+    # # DEBUGGING
+    # mytry = try( sum( d$Mi > p$q ) / length( d$Mi ) )
+    # if("try-error" %in% class(mytry)) browser()
+    
     # true population proportion of studies with ES > q
-    # DEBUGGING
-    mytry = try( sum( d$Mi > p$q ) / length( d$Mi ) )
-    if("try-error" %in% class(mytry)) browser()
     p.above = sum( d$Mi > p$q ) / length( d$Mi )
     
     ##### Compute Parametric Estimators #####
@@ -245,7 +248,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                  measure="SMD",
                  knha = TRUE,
                  method = "REML")
-    M = m$b
+    M = as.numeric(m$b)
     t2 = m$tau2
     se.M = sqrt( as.numeric(m$vb) )
     se.t2 = m$se.tau2
@@ -298,7 +301,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     boot.hi = bootCIs$bca[5]
     
     ##### Get Nonparametric Phat and CI #####
-    Phat.NP = prop_stronger_np( q = q,
+    Phat.NP = prop_stronger_np( q = p$q,
                                   yi = d$yi,
                                   vi = d$vyi,
                                   tail = "above",
@@ -306,77 +309,92 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                                   return.vectors = FALSE)
 
     
+    # TEST ONLY
+    #data.frame(var = "did a rep")
+    
     # fill in new row of summary dataframe with bias, coverage, and CI width for DM and bootstrap
-    # dataframe with 3 rows, one for each method
+    # dataframe with 4 rows, one for each method
+    
+    # ~~ BOOKMARK: NO IDEA WHAT'S WRONG. WAS TRYING TO RUN THIS IN INTERACTIVE
+    # R SESSION, BUT SOMETHING ABOUT THE BELOW CREATION OF ROWS DOESN'T WORK, STARTING WITH EVEN
+    # THE FIRST ONE. 
+    
+    # MAYBE TRY PUTTING BACK MY OLD SCRIPT TO JUST SEE IF IT WORKS?
     
       rows =     data.frame( TrueMean = p$mu,
                              EstMean = M,
                              MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-                             
+
                              TrueVar = p$V,
                              EstVar = t2,
                              VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
                                                 CIs$random["tau^2", "ci.ub"] ),
-                             
+
                              TheoryP = expected,  # from Normal quantiles given mu, V
                              TruthP = p.above,   # based on generated data
                              phat = ours$Est,  # our estimator
                              phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-                             
+
                              # method of calculating CI: exponentiate logit or not?
-                             Method = "Logit", 
-                             
+                             Method = "Logit",
+
                              # CI performance
                              Cover = covers(expected, ours$lo.expon, ours$hi.expon),
-                             
-                             Width = ours$hi.expon - ours$lo.expon )
-      
-      rows = add_row( rows, 
+
+                             Width = ours$hi.expon - ours$lo.expon,
+
+                             Note = NA )
+ 
+      rows = add_row( rows,
                       TrueMean = p$mu,
                       EstMean = M,
                       MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-                      
+
                       TrueVar = p$V,
                       EstVar = t2,
                       VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
                                          CIs$random["tau^2", "ci.ub"] ),
-                      
+
                       TheoryP = expected,  # from Normal quantiles given mu, V
                       TruthP = p.above,   # based on generated data
                       phat = ours$Est,  # our estimator
                       phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-                      
+
                       # method of calculating CI: exponentiate logit or not?
-                      Method = "Original", 
-                      
+                      Method = "Original",
+
                       # CI performance
                       Cover = covers(expected, ours$lo, ours$hi),
-                      
-                      Width = ours$hi - ours$lo )
-      
-      rows = add_row( rows, 
+
+                      Width = ours$hi - ours$lo,
+
+                      Note = NA)
+
+      rows = add_row( rows,
                       TrueMean = p$mu,
                       EstMean = M,
                       MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-                      
+
                       TrueVar = p$V,
                       EstVar = t2,
                       VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
                                          CIs$random["tau^2", "ci.ub"] ),
-                      
+
                       TheoryP = expected,  # from Normal quantiles given mu, V
                       TruthP = p.above,   # based on generated data
                       phat = ours$Est,  # our estimator
                       phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-                      
+
                       # method of calculating CI: exponentiate logit or not?
-                      Method = "Boot", 
-                      
+                      Method = "Boot",
+
                       # CI performance
                       Cover = covers(expected, boot.lo, boot.hi),
-                      
-                      Width = boot.hi - boot.lo )
-      
+
+                      Width = boot.hi - boot.lo,
+
+                      Note = NA)
+
       rows = add_row( rows,
                       TrueMean = p$mu,
                       EstMean = NA,
@@ -397,14 +415,16 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                       # CI performance
                       Cover = covers(expected, Phat.NP$lo, Phat.NP$hi),
 
-                      Width = Phat.NP$hi - Phat.NP$lo )
+                      Width = Phat.NP$hi - Phat.NP$lo,
 
-      
+                      Note = NA)
+
+
       # add in scenario parameters
       rows$scen.name = scen
       rows = as.data.frame( merge(rows, scen.params) )
       rows
-   
+
 }  ### end parallelized loop
 
 } )[3]  # end timer
@@ -416,18 +436,18 @@ head(rs)
 # time in seconds
 rep.time
 
-# ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
-# see results
-rs %>% group_by(Method) %>% summarise(coverage = mean(Cover, na.rm=TRUE))
-rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
-rs %>% group_by(Method) %>% summarise(bias = mean(phat, na.rm=TRUE))
-# bias
+# # ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
+# # see results
+# rs %>% group_by(Method) %>% summarise(coverage = mean(Cover, na.rm=TRUE))
+# rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
+# rs %>% group_by(Method) %>% summarise(bias = mean(phat, na.rm=TRUE))
+# # bias
 
 
 
 
 ########################### WRITE LONG RESULTS  ###########################
-setwd("/home/groups/manishad/MAM/sim_results/long")
+setwd("/home/groups/manishad/RRR/sim_results/long")
 write.csv( rs, paste( "long_results", jobname, ".csv", sep="_" ) )
 
 

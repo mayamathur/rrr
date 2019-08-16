@@ -120,7 +120,7 @@ meta = rma.uni( yi = d$main.fis,
                               tail = "above",
                               R = 2000,
                               return.vectors = TRUE) )
-
+Phat.NP$res
 
 # ** plot the pcts vs. the p-values
 ggplot( data = data.frame( pcts = Phat.NP$pcts, pvals = Phat.NP$pvals ),
