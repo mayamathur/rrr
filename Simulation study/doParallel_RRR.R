@@ -184,7 +184,7 @@ registerDoParallel(cores=16)
 ########################### WRITE BLANK CSV FILE  ###########################
 
 # how many rows to make
-n.methods = 4
+n.methods = 3
 # this records that the rep started in case there is a problem with the bootstrapping
 placeholder = data.frame( TrueMean = NA,
                           EstMean = NA,
@@ -326,60 +326,66 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     
     # MAYBE TRY PUTTING BACK MY OLD SCRIPT TO JUST SEE IF IT WORKS?
     
-    # straight from doParallel_MAM.R
-    rows =     data.frame( TrueMean = p$mu,
-                           EstMean = M,
-                           MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-                           
-                           TrueVar = p$V,
-                           EstVar = t2,
-                           VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"], CIs$random["tau^2", "ci.ub"] ),
-                           
-                           TheoryP = expected,  # from Normal quantiles given mu, V
-                           TruthP = p.above,   # based on generated data
-                           phat = ours$Est,  # our estimator
-                           phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-                           
-                           # method of calculating CI: exponentiate logit or not?
-                           Method = c( "Logit",
-                                       "Original",
-                                       "Boot"), 
-                           
-                           # CI performance
-                           Cover = c( covers(expected, ours$lo.expon, ours$hi.expon),
-                                      covers(expected, ours$lo, ours$hi),
-                                      covers(expected, boot.lo, boot.hi)
-                           ), # coverage; vector with length 3
-                           
-                           Width = c( ours$hi.expon - ours$lo.expon,
-                                      ours$hi - ours$lo,
-                                      boot.hi - boot.lo )
-    )
+    # # straight from doParallel_MAM.R - WORKS
+    # rows =     data.frame( TrueMean = p$mu,
+    #                        EstMean = M,
+    #                        MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+    #                        
+    #                        TrueVar = p$V,
+    #                        EstVar = t2,
+    #                        VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"], CIs$random["tau^2", "ci.ub"] ),
+    #                        
+    #                        TheoryP = expected,  # from Normal quantiles given mu, V
+    #                        TruthP = p.above,   # based on generated data
+    #                        phat = ours$Est,  # our estimator
+    #                        phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+    #                        
+    #                        # method of calculating CI: exponentiate logit or not?
+    #                        Method = c( "Logit",
+    #                                    "Original",
+    #                                    "Boot"), 
+    #                        
+    #                        # CI performance
+    #                        Cover = c( covers(expected, ours$lo.expon, ours$hi.expon),
+    #                                   covers(expected, ours$lo, ours$hi),
+    #                                   covers(expected, boot.lo, boot.hi)
+    #                        ), # coverage; vector with length 3
+    #                        
+    #                        Width = c( ours$hi.expon - ours$lo.expon,
+    #                                   ours$hi - ours$lo,
+    #                                   boot.hi - boot.lo )
+    # )
     
-      # rows =     data.frame( TrueMean = p$mu,
-      #                        EstMean = M,
-      #                        MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-      # 
-      #                        TrueVar = p$V,
-      #                        EstVar = t2,
-      #                        VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-      #                                           CIs$random["tau^2", "ci.ub"] ),
-      # 
-      #                        TheoryP = expected,  # from Normal quantiles given mu, V
-      #                        TruthP = p.above,   # based on generated data
-      #                        phat = ours$Est,  # our estimator
-      #                        phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-      # 
-      #                        # method of calculating CI: exponentiate logit or not?
-      #                        Method = "Logit",
-      # 
-      #                        # CI performance
-      #                        Cover = covers(expected, ours$lo.expon, ours$hi.expon),
-      # 
-      #                        Width = ours$hi.expon - ours$lo.expon,
-      # 
-      #                        Note = NA )
-      # 
+    # bm: since the below chunk doesn't work, see if any intermediate files do work
+    setwd("/home/groups/manishad/RRR/sim_results/long")
+    write.csv(ours, "ours.csv")
+    write.csv(expected, "expected.csv")
+    
+    # DOES NOT WORK! 
+      rows =     data.frame( TrueMean = p$mu,
+                             EstMean = M,
+                             MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+
+                             TrueVar = p$V,
+                             EstVar = t2,
+                             VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                                CIs$random["tau^2", "ci.ub"] ),
+
+                             TheoryP = expected,  # from Normal quantiles given mu, V
+                             TruthP = p.above,   # based on generated data
+                             phat = ours$Est,  # our estimator
+                             phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+
+                             # method of calculating CI: exponentiate logit or not?
+                             Method = "Original",
+
+                             # CI performance
+                             Cover = covers(expected, ours$lo, ours$hi),
+
+                             Width = ours$hi - ours$lo,
+
+                             Note = NA )
+
       # rows = add_row( rows,
       #                 TrueMean = p$mu,
       #                 EstMean = M,
@@ -404,31 +410,31 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
       #                 Width = ours$hi - ours$lo,
       # 
       #                 Note = NA)
-      # 
-      # rows = add_row( rows,
-      #                 TrueMean = p$mu,
-      #                 EstMean = M,
-      #                 MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-      # 
-      #                 TrueVar = p$V,
-      #                 EstVar = t2,
-      #                 VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-      #                                    CIs$random["tau^2", "ci.ub"] ),
-      # 
-      #                 TheoryP = expected,  # from Normal quantiles given mu, V
-      #                 TruthP = p.above,   # based on generated data
-      #                 phat = ours$Est,  # our estimator
-      #                 phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-      # 
-      #                 # method of calculating CI: exponentiate logit or not?
-      #                 Method = "Boot",
-      # 
-      #                 # CI performance
-      #                 Cover = covers(expected, boot.lo, boot.hi),
-      # 
-      #                 Width = boot.hi - boot.lo,
-      # 
-      #                 Note = NA)
+      
+      rows = add_row( rows,
+                      TrueMean = p$mu,
+                      EstMean = M,
+                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+
+                      TrueVar = p$V,
+                      EstVar = t2,
+                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                         CIs$random["tau^2", "ci.ub"] ),
+
+                      TheoryP = expected,  # from Normal quantiles given mu, V
+                      TruthP = p.above,   # based on generated data
+                      phat = ours$Est,  # our estimator
+                      phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+
+                      # method of calculating CI: exponentiate logit or not?
+                      Method = "Boot",
+
+                      # CI performance
+                      Cover = covers(expected, boot.lo, boot.hi),
+
+                      Width = boot.hi - boot.lo,
+
+                      Note = NA)
       # 
       # rows = add_row( rows,
       #                 TrueMean = p$mu,

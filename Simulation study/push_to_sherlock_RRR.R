@@ -14,6 +14,7 @@ squeue -u mmathur -t PENDING
 
 # see the datasets
 cd /home/groups/manishad/RRR/sim_results/long
+nano long*
 ls -l . | egrep -c '^-'
 
 # see the errors
