@@ -5,7 +5,7 @@
 # see the sbatches
 cd /home/groups/manishad/RRR/sbatch_files
 
-sbatch -p manishad /home/groups/manishad/RRR/sbatch_files/1.sbatch
+sbatch -p owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
 
 # check on my running or pending jobs
 squeue -u mmathur -t RUNNING

@@ -19,8 +19,13 @@ print(p)
 
 # simulation reps to run within this job
 # this need to match n.reps.in.doParallel in the genSbatch script
-sim.reps = 5
-boot.reps = 10000
+sim.reps = 2
+boot.reps = 100
+
+# # real versions
+# sim.reps = 5
+# boot.reps = 10000
+
 
 
 # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
@@ -46,103 +51,103 @@ registerDoParallel(cores=16)
 ######### END OF CLUSTER PART #########
 
 
-######### FOR LOCAL USE #########
-
-rm(list=ls())
-
-# # isolate a bad scenario
-# # lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
-# k = 10  # running now on Sherlock
-# mu = 0.5
-# V = 0.5
-# minN = 800
-# muN = NA # placeholder only
+# ######### FOR LOCAL USE #########
+# 
+# rm(list=ls())
+# 
+# # # isolate a bad scenario
+# # # lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
+# # k = 10  # running now on Sherlock
+# # mu = 0.5
+# # V = 0.5
+# # minN = 800
+# # muN = NA # placeholder only
+# # sd.w = 1
+# # tail="above"
+# 
+# # full set of scenarios
+# k = c(10)
+# mu = 0.5  # mean of true effects (log-RR)
+# V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+# muN = NA # just a placeholder; to be filled in later
+# minN = c( 100, 800 )
 # sd.w = 1
-# tail="above"
-
-# full set of scenarios
-k = c(10)
-mu = 0.5  # mean of true effects (log-RR)
-V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
-muN = NA # just a placeholder; to be filled in later
-minN = c( 100, 800 )
-sd.w = 1
-tail = "above"
-
-# only running P = 0.20 to supplement previous sim results
-# set q to be the quantiles such that TheoryP is 0.2 for every V
-TheoryP = c(0.05, 0.1, 0.2, 0.5)
-
-qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
-
-for (i in 1:length(TheoryP) ) {
-  new.qs = qnorm( p = 1 - TheoryP[i],
-                  mean = mu,
-                  sd = sqrt(V) )
-  qmat[,i] = new.qs
-}
-
-q = unique( as.vector( qmat ))
-
-# matrix of scenario parameters
-scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w)
-names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w" )
-
-
-# only keep combos of V and q that lead to the TheoryPs we want
-TheoryP2 = 1 - pnorm( q = scen.params$q,
-                      mean = scen.params$mu,
-                      sd = sqrt(scen.params$V) )
-scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
-table(scen.params$q, scen.params$V ); qmat  # each
-
-
-#start.at = which( my.letters == "aaaa" )
-start.at = 1
-scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
-( n.scen = length(scen.params[,1]) )
-
-# avoid doing all factorial combinations of muN and minN this way
-scen.params$muN = scen.params$minN + 50
-
-
-
-
-# sim.reps = 500  # reps to run in this iterate; leave this alone!
-# boot.reps = 1000
-sim.reps = 2
-boot.reps = 200
-
-
-library(foreach)
-library(doParallel)
-library(dplyr)
-library(boot)
-library(purrr)
-
-# read in helper fns
-setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
-source("functions_RRR.R")
-
-# # ~~~ DEBUGGING: FOR CLUSTER
-# # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-# library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-# library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-# library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-# library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-# library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-# library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-# library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-# setwd("/home/groups/manishad/RRR")
+# tail = "above"
+# 
+# # only running P = 0.20 to supplement previous sim results
+# # set q to be the quantiles such that TheoryP is 0.2 for every V
+# TheoryP = c(0.05, 0.1, 0.2, 0.5)
+# 
+# qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
+# 
+# for (i in 1:length(TheoryP) ) {
+#   new.qs = qnorm( p = 1 - TheoryP[i],
+#                   mean = mu,
+#                   sd = sqrt(V) )
+#   qmat[,i] = new.qs
+# }
+# 
+# q = unique( as.vector( qmat ))
+# 
+# # matrix of scenario parameters
+# scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w)
+# names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w" )
+# 
+# 
+# # only keep combos of V and q that lead to the TheoryPs we want
+# TheoryP2 = 1 - pnorm( q = scen.params$q,
+#                       mean = scen.params$mu,
+#                       sd = sqrt(scen.params$V) )
+# scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
+# table(scen.params$q, scen.params$V ); qmat  # each
+# 
+# 
+# #start.at = which( my.letters == "aaaa" )
+# start.at = 1
+# scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
+# ( n.scen = length(scen.params[,1]) )
+# 
+# # avoid doing all factorial combinations of muN and minN this way
+# scen.params$muN = scen.params$minN + 50
+# 
+# 
+# 
+# 
+# # sim.reps = 500  # reps to run in this iterate; leave this alone!
+# # boot.reps = 1000
+# sim.reps = 2
+# boot.reps = 200
+# 
+# 
+# library(foreach)
+# library(doParallel)
+# library(dplyr)
+# library(boot)
+# library(purrr)
+# 
+# # read in helper fns
+# setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
 # source("functions_RRR.R")
-
-# set the number of cores
-registerDoParallel(cores=16)
-
-
-scen = 1
-
-######### END OF LOCAL PART #########
+# 
+# # # ~~~ DEBUGGING: FOR CLUSTER
+# # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+# # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+# # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+# # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+# # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+# # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+# # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+# # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+# # setwd("/home/groups/manishad/RRR")
+# # source("functions_RRR.R")
+# 
+# # set the number of cores
+# registerDoParallel(cores=16)
+# 
+# 
+# scen = 1
+# 
+# ######### END OF LOCAL PART #########
 
 
 ########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION  ###########################
@@ -321,103 +326,133 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     
     # MAYBE TRY PUTTING BACK MY OLD SCRIPT TO JUST SEE IF IT WORKS?
     
-      rows =     data.frame( TrueMean = p$mu,
-                             EstMean = M,
-                             MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-
-                             TrueVar = p$V,
-                             EstVar = t2,
-                             VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-                                                CIs$random["tau^2", "ci.ub"] ),
-
-                             TheoryP = expected,  # from Normal quantiles given mu, V
-                             TruthP = p.above,   # based on generated data
-                             phat = ours$Est,  # our estimator
-                             phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-
-                             # method of calculating CI: exponentiate logit or not?
-                             Method = "Logit",
-
-                             # CI performance
-                             Cover = covers(expected, ours$lo.expon, ours$hi.expon),
-
-                             Width = ours$hi.expon - ours$lo.expon,
-
-                             Note = NA )
- 
-      rows = add_row( rows,
-                      TrueMean = p$mu,
-                      EstMean = M,
-                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-
-                      TrueVar = p$V,
-                      EstVar = t2,
-                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-                                         CIs$random["tau^2", "ci.ub"] ),
-
-                      TheoryP = expected,  # from Normal quantiles given mu, V
-                      TruthP = p.above,   # based on generated data
-                      phat = ours$Est,  # our estimator
-                      phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-
-                      # method of calculating CI: exponentiate logit or not?
-                      Method = "Original",
-
-                      # CI performance
-                      Cover = covers(expected, ours$lo, ours$hi),
-
-                      Width = ours$hi - ours$lo,
-
-                      Note = NA)
-
-      rows = add_row( rows,
-                      TrueMean = p$mu,
-                      EstMean = M,
-                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-
-                      TrueVar = p$V,
-                      EstVar = t2,
-                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-                                         CIs$random["tau^2", "ci.ub"] ),
-
-                      TheoryP = expected,  # from Normal quantiles given mu, V
-                      TruthP = p.above,   # based on generated data
-                      phat = ours$Est,  # our estimator
-                      phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-
-                      # method of calculating CI: exponentiate logit or not?
-                      Method = "Boot",
-
-                      # CI performance
-                      Cover = covers(expected, boot.lo, boot.hi),
-
-                      Width = boot.hi - boot.lo,
-
-                      Note = NA)
-
-      rows = add_row( rows,
-                      TrueMean = p$mu,
-                      EstMean = NA,
-                      MeanCover = NA,
-
-                      TrueVar = NA,
-                      EstVar = NA,
-                      VarCover = NA,
-
-                      TheoryP = expected,  # from Normal quantiles given mu, V
-                      TruthP = p.above,   # based on generated data
-                      phat = Phat.NP$Est,  # our estimator
-                      phatBias = Phat.NP$Est - expected, # phat estimator vs. true proportion above
-
-                      # method of calculating CI: exponentiate logit or not?
-                      Method = "Nonparametric",
-
-                      # CI performance
-                      Cover = covers(expected, Phat.NP$lo, Phat.NP$hi),
-
-                      Width = Phat.NP$hi - Phat.NP$lo,
-
-                      Note = NA)
+    # straight from doParallel_MAM.R
+    rows =     data.frame( TrueMean = p$mu,
+                           EstMean = M,
+                           MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+                           
+                           TrueVar = p$V,
+                           EstVar = t2,
+                           VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"], CIs$random["tau^2", "ci.ub"] ),
+                           
+                           TheoryP = expected,  # from Normal quantiles given mu, V
+                           TruthP = p.above,   # based on generated data
+                           phat = ours$Est,  # our estimator
+                           phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+                           
+                           # method of calculating CI: exponentiate logit or not?
+                           Method = c( "Logit",
+                                       "Original",
+                                       "Boot"), 
+                           
+                           # CI performance
+                           Cover = c( covers(expected, ours$lo.expon, ours$hi.expon),
+                                      covers(expected, ours$lo, ours$hi),
+                                      covers(expected, boot.lo, boot.hi)
+                           ), # coverage; vector with length 3
+                           
+                           Width = c( ours$hi.expon - ours$lo.expon,
+                                      ours$hi - ours$lo,
+                                      boot.hi - boot.lo )
+    )
+    
+      # rows =     data.frame( TrueMean = p$mu,
+      #                        EstMean = M,
+      #                        MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+      # 
+      #                        TrueVar = p$V,
+      #                        EstVar = t2,
+      #                        VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+      #                                           CIs$random["tau^2", "ci.ub"] ),
+      # 
+      #                        TheoryP = expected,  # from Normal quantiles given mu, V
+      #                        TruthP = p.above,   # based on generated data
+      #                        phat = ours$Est,  # our estimator
+      #                        phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+      # 
+      #                        # method of calculating CI: exponentiate logit or not?
+      #                        Method = "Logit",
+      # 
+      #                        # CI performance
+      #                        Cover = covers(expected, ours$lo.expon, ours$hi.expon),
+      # 
+      #                        Width = ours$hi.expon - ours$lo.expon,
+      # 
+      #                        Note = NA )
+      # 
+      # rows = add_row( rows,
+      #                 TrueMean = p$mu,
+      #                 EstMean = M,
+      #                 MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+      # 
+      #                 TrueVar = p$V,
+      #                 EstVar = t2,
+      #                 VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+      #                                    CIs$random["tau^2", "ci.ub"] ),
+      # 
+      #                 TheoryP = expected,  # from Normal quantiles given mu, V
+      #                 TruthP = p.above,   # based on generated data
+      #                 phat = ours$Est,  # our estimator
+      #                 phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+      # 
+      #                 # method of calculating CI: exponentiate logit or not?
+      #                 Method = "Original",
+      # 
+      #                 # CI performance
+      #                 Cover = covers(expected, ours$lo, ours$hi),
+      # 
+      #                 Width = ours$hi - ours$lo,
+      # 
+      #                 Note = NA)
+      # 
+      # rows = add_row( rows,
+      #                 TrueMean = p$mu,
+      #                 EstMean = M,
+      #                 MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+      # 
+      #                 TrueVar = p$V,
+      #                 EstVar = t2,
+      #                 VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+      #                                    CIs$random["tau^2", "ci.ub"] ),
+      # 
+      #                 TheoryP = expected,  # from Normal quantiles given mu, V
+      #                 TruthP = p.above,   # based on generated data
+      #                 phat = ours$Est,  # our estimator
+      #                 phatBias = ours$Est - expected, # phat estimator vs. true proportion above
+      # 
+      #                 # method of calculating CI: exponentiate logit or not?
+      #                 Method = "Boot",
+      # 
+      #                 # CI performance
+      #                 Cover = covers(expected, boot.lo, boot.hi),
+      # 
+      #                 Width = boot.hi - boot.lo,
+      # 
+      #                 Note = NA)
+      # 
+      # rows = add_row( rows,
+      #                 TrueMean = p$mu,
+      #                 EstMean = NA,
+      #                 MeanCover = NA,
+      # 
+      #                 TrueVar = NA,
+      #                 EstVar = NA,
+      #                 VarCover = NA,
+      # 
+      #                 TheoryP = expected,  # from Normal quantiles given mu, V
+      #                 TruthP = p.above,   # based on generated data
+      #                 phat = Phat.NP$Est,  # our estimator
+      #                 phatBias = Phat.NP$Est - expected, # phat estimator vs. true proportion above
+      # 
+      #                 # method of calculating CI: exponentiate logit or not?
+      #                 Method = "Nonparametric",
+      # 
+      #                 # CI performance
+      #                 Cover = covers(expected, Phat.NP$lo, Phat.NP$hi),
+      # 
+      #                 Width = Phat.NP$hi - Phat.NP$lo,
+      # 
+      #                 Note = NA)
 
 
       # add in scenario parameters

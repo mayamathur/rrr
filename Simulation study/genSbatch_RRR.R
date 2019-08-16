@@ -61,8 +61,8 @@ write.csv( scen.params, "scen_params.csv" )
 source("functions_RRR.R")
 
 # number of sbatches to generate (i.e., iterations within each scenario)
-n.reps.per.scen = 500
-n.reps.in.doParallel = 5
+n.reps.per.scen = 10
+n.reps.in.doParallel = 2
 ( n.files = ( n.reps.per.scen / n.reps.in.doParallel ) * n.scen )
 
 
@@ -99,8 +99,9 @@ n.files
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 1:4) {
-  system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
+for (i in 1:1) {
+  #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
+  system( paste("sbatch -p manishad /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds
 }
 
