@@ -4,7 +4,7 @@
 path = "/home/groups/manishad/RRR"
 setwd(path)
 
-# full set of scenarios
+# one scenario
 k = c(10)
 mu = 0.5  # mean of true effects (log-RR)
 V = c( 0.5^2 )  # variance of true effects
@@ -14,6 +14,20 @@ muN = NA # just a placeholder; to be filled in later
 minN = c( 800 )
 sd.w = 1
 tail = "above"
+true.effect.dist = c("normal", "expo")
+
+
+# # # full set of scenarios
+# k = c(5, 10, 15, 20, 50)
+# mu = 0.5  # mean of true effects (log-RR)
+# #V = c( 0.5^2 )  # variance of true effects
+# V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+# muN = NA # just a placeholder; to be filled in later
+# minN = c( 100, 800 )
+# sd.w = 1
+# tail = "above"
+# true.effect.dist = c("normal", "expo")
+
 
 # only running P = 0.20 to supplement previous sim results
 # set q to be the quantiles such that TheoryP is 0.2 for every V
@@ -32,8 +46,8 @@ for (i in 1:length(TheoryP) ) {
 q = unique( as.vector( qmat ))
 
 # matrix of scenario parameters
-scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w)
-names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w" )
+scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w, true.effect.dist)
+names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w", "true.effect.dist" )
 
 
 # only keep combos of V and q that lead to the TheoryPs we want
@@ -100,9 +114,9 @@ n.files
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 1:1) {
+for (i in 1:n.files) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
-  system( paste("sbatch -p manishad /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
+  system( paste("sbatch -p qsu /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds
 }
 

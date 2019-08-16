@@ -1,4 +1,16 @@
 
+# Simulations to run for the nonparametric Phat letter:
+# 1.) Does NP - sign test inference do better than boot for small k and 
+#  the worst scenarios in MAM appendix?
+
+# 2.) Are there ever scenarios where boot outperforms NP - sign test in 
+#  terms of coverage and width?
+
+# 3.) For NP point estimate with small k or non-normal true effects, what is best:
+#  NP - sign test estimate or NP - ensemble estimate?
+
+# IDEALLY INCREASE BOOT REPS! 
+
 ######### FOR CLUSTER USE #########
 
 # because Sherlock 2.0 restores previous workspace
@@ -24,7 +36,8 @@ print(p)
 
 # # real versions
 sim.reps = 5
-boot.reps = 10000
+# was 10,000 in MAM paper
+boot.reps = 5000
 
 
 
@@ -64,19 +77,21 @@ registerDoParallel(cores=16)
 # # muN = NA # placeholder only
 # # sd.w = 1
 # # tail="above"
+# # true.effect.dist = "normal"
 # 
 # # full set of scenarios
 # k = c(10)
 # mu = 0.5  # mean of true effects (log-RR)
-# V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+# V = c( 0.5^2 )  # variance of true effects
 # muN = NA # just a placeholder; to be filled in later
-# minN = c( 100, 800 )
+# minN = c( 800 )
 # sd.w = 1
 # tail = "above"
+# true.effect.dist = "expo"
 # 
 # # only running P = 0.20 to supplement previous sim results
 # # set q to be the quantiles such that TheoryP is 0.2 for every V
-# TheoryP = c(0.05, 0.1, 0.2, 0.5)
+# TheoryP = c(0.1)
 # 
 # qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 # 
@@ -90,8 +105,8 @@ registerDoParallel(cores=16)
 # q = unique( as.vector( qmat ))
 # 
 # # matrix of scenario parameters
-# scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w)
-# names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w" )
+# scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w, true.effect.dist)
+# names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w", "true.effect.dist" )
 # 
 # 
 # # only keep combos of V and q that lead to the TheoryPs we want
@@ -183,8 +198,7 @@ registerDoParallel(cores=16)
 
 ########################### WRITE BLANK CSV FILE  ###########################
 
-# how many rows to make
-n.methods = 3
+
 # this records that the rep started in case there is a problem with the bootstrapping
 placeholder = data.frame( TrueMean = NA,
                           EstMean = NA,
@@ -199,15 +213,15 @@ placeholder = data.frame( TrueMean = NA,
                           phat = NA,  # our estimator
                           phatBias = NA, # phat estimator vs. true proportion above
                           
-                          Method = rep(NA, n.methods), 
+                          Method = NA, 
                           
                           # CI performance
-                          Cover = rep(NA, n.methods),
+                          Cover = NA,
                           
-                          Width = rep(NA, n.methods), 
+                          Width = NA, 
                           
-                          Note = rep("Sim failure", n.methods)
-)
+                          Note = "Sim failure" )
+
 
 placeholder$scen.name = scen
 placeholder = merge( placeholder, scen.params )
@@ -306,63 +320,25 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     boot.hi = bootCIs$bca[5]
     boot.median = median(boot.res$t)  # median Phat in bootstrap iterates
     
-    ##### Get Nonparametric Phat and CI #####
+    ##### Get Nonparametric Phat and CI (Rui Wang) #####
     Phat.NP = prop_stronger_np( q = p$q,
                                   yi = d$yi,
                                   vi = d$vyi,
                                   tail = "above",
                                   R = 2000,
                                   return.vectors = FALSE)
-
     
-    # TEST ONLY
-    #data.frame(var = "did a rep")
+    ##### Get Nonparametric Phat and CI (Wang ensemble) #####
+    write.csv("nothing", "flag1.csv")
     
-    # fill in new row of summary dataframe with bias, coverage, and CI width for DM and bootstrap
-    # dataframe with 4 rows, one for each method
+    ens = my_ens( yi = d$yi, 
+                  sei = sqrt(d$vyi) )
+    if ( p$tail == "above" ) Phat.NP.ens = sum(ens > c(p$q)) / length(ens)
+    if ( p$tail == "below" ) Phat.NP.ens = sum(ens < c(p$q)) / length(ens)
     
-    # ~~ BOOKMARK: NO IDEA WHAT'S WRONG. WAS TRYING TO RUN THIS IN INTERACTIVE
-    # R SESSION, BUT SOMETHING ABOUT THE BELOW CREATION OF ROWS DOESN'T WORK, STARTING WITH EVEN
-    # THE FIRST ONE. 
+    write.csv(Phat.NP.ens, "Phat_NP_ens.csv")
     
-    # MAYBE TRY PUTTING BACK MY OLD SCRIPT TO JUST SEE IF IT WORKS?
-    
-    # # straight from doParallel_MAM.R - WORKS
-    # rows =     data.frame( TrueMean = p$mu,
-    #                        EstMean = M,
-    #                        MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-    #                        
-    #                        TrueVar = p$V,
-    #                        EstVar = t2,
-    #                        VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"], CIs$random["tau^2", "ci.ub"] ),
-    #                        
-    #                        TheoryP = expected,  # from Normal quantiles given mu, V
-    #                        TruthP = p.above,   # based on generated data
-    #                        phat = ours$Est,  # our estimator
-    #                        phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-    #                        
-    #                        # method of calculating CI: exponentiate logit or not?
-    #                        Method = c( "Logit",
-    #                                    "Original",
-    #                                    "Boot"), 
-    #                        
-    #                        # CI performance
-    #                        Cover = c( covers(expected, ours$lo.expon, ours$hi.expon),
-    #                                   covers(expected, ours$lo, ours$hi),
-    #                                   covers(expected, boot.lo, boot.hi)
-    #                        ), # coverage; vector with length 3
-    #                        
-    #                        Width = c( ours$hi.expon - ours$lo.expon,
-    #                                   ours$hi - ours$lo,
-    #                                   boot.hi - boot.lo )
-    # )
-    
-    # bm: since the below chunk doesn't work, see if any intermediate files do work
-    setwd("/home/groups/manishad/RRR/sim_results/long")
-    write.csv(ours, "ours.csv")
-    write.csv(expected, "expected.csv")
-    
-    # DOES NOT WORK! 
+ 
       rows =     data.frame( TrueMean = p$mu,
                              EstMean = M,
                              MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
@@ -423,11 +399,11 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
 
                       TheoryP = expected,  # from Normal quantiles given mu, V
                       TruthP = p.above,   # based on generated data
-                      phat = Phat.NP$Est,  # our estimator
+                      phat = Phat.NP$Est,  # nonparametric estimator
                       phatBias = Phat.NP$Est - expected, # phat estimator vs. true proportion above
 
                       # method of calculating CI: exponentiate logit or not?
-                      Method = "Nonparametric",
+                      Method = "NP sign test",
 
                       # CI performance
                       Cover = covers(expected, Phat.NP$lo, Phat.NP$hi),
@@ -435,6 +411,30 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                       Width = Phat.NP$hi - Phat.NP$lo,
 
                       Note = NA)
+      
+      # rows = add_row( rows,
+      #                 TrueMean = p$mu,
+      #                 EstMean = NA,
+      #                 MeanCover = NA,
+      #                 
+      #                 TrueVar = NA,
+      #                 EstVar = NA,
+      #                 VarCover = NA,
+      #                 
+      #                 TheoryP = expected,  # from Normal quantiles given mu, V
+      #                 TruthP = p.above,   # based on generated data
+      #                 phat = Phat.NP.ens,  # nonparametric estimator
+      #                 phatBias = Phat.NP.ens - expected, # phat estimator vs. true proportion above
+      #                 
+      #                 # method of calculating CI: exponentiate logit or not?
+      #                 Method = "NP ensemble",
+      #                 
+      #                 # CI performance
+      #                 Cover = NA,
+      #                 
+      #                 Width = NA,
+      #                 
+      #                 Note = NA)
 
 
       # add in scenario parameters

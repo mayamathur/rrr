@@ -3,6 +3,23 @@
 # the fn for computing the estimators themselves are in stronger_than_function.R
 #  since users will want those
 
+########################### FN: ENSEMBLE ESTIMATES ###########################
+
+# my calculation of ensemble estimates
+# see Wang paper
+my_ens = function(yi,
+                  sei ) {
+  
+  meta = rma.uni( yi = yi, 
+                  sei = sei, 
+                  method = "DL" )
+  
+  muhat = meta$b
+  t2 = meta$tau2
+  
+  # return ensemble estimates
+  c(muhat) + ( c(t2) / ( c(t2) + sei^2 ) )^(1/2) * ( yi - c(muhat) )
+}
 
 ########################### FN: SIMULATE 1 STUDY ###########################
 
@@ -16,28 +33,24 @@ sim_one_study = function( mu,
                           V, 
                           muN,
                           minN,
-                          sd.w ) {
+                          sd.w,
+                          true.effect.dist = "normal"
+                          ) {
   
   # simulate total N for each study
   N = round( runif( n = 1, min = minN, max = minN + 2*( muN - minN ) ) ) # draw from uniform centered on muN
   
   # draw population true effect for this study
-  Mi = rnorm( n=1, mean=mu, sd=sqrt(V) )
-  
-  
-  # # ~~~modifications to allow non-normal true effects
-  # # draw population true effect for this study
-  # if ( true.effect.dist == "normal" ) {
-  #   Mi = rnorm( n=1, mean=mu, sd=sqrt(V) )
-  # }
-  # 
-  # if ( true.effect.dist == "expo" ) {
-  #   # set the rate so the heterogeneity is correct
-  #   Mi = rexp( n = 1, rate = sqrt(1/V) )
-  #   # now the mean is sqrt(V) rather than mu
-  #   # shift to have the correct mean (in expectation)
-  #   Mi = Mi + (mu - sqrt(V))
-  # }
+  if ( true.effect.dist == "normal" ) {
+    Mi = rnorm( n=1, mean=mu, sd=sqrt(V) )
+  }
+  if ( true.effect.dist == "expo" ) {
+    # set the rate so the heterogeneity is correct
+    Mi = rexp( n = 1, rate = sqrt(1/V) )
+    # now the mean is sqrt(V) rather than mu
+    # shift to have the correct mean (in expectation)
+    Mi = Mi + (mu - sqrt(V))
+  }
   
   ###### Simulate Data For Individual Subjects ######
   
