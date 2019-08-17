@@ -20,12 +20,12 @@ setwd(path)
 # full set of scenarios
 k = c(5, 10, 15, 20, 50)
 mu = 0.5  # mean of true effects (log-RR)
-V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
+V = c( 0.5^2, 0.2^2, 0.1^2 )  # variance of true effects
 muN = NA # just a placeholder; to be filled in later
 minN = c( 100, 800 )
 sd.w = 1
 tail = "above"
-true.effect.dist = c("normal", "expo")
+true.effect.dist = c("expo", "normal")
 
 
 # only running P = 0.20 to supplement previous sim results
@@ -66,7 +66,7 @@ scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
 scen.params$muN = scen.params$minN + 50
 
 # write the csv file of params (to Sherlock)
-write.csv( scen.params, "scen_params.csv" )
+write.csv( scen.params, "scen_params.csv", row.names = FALSE )
 
 
 ########################### GENERATE SBATCHES ###########################
@@ -110,10 +110,11 @@ sbatch_params <- data.frame(jobname,
 
 n.files
 
+#24,000 jobs
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 1:50) {
+for (i in 51:5000) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   system( paste("sbatch -p qsu /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds

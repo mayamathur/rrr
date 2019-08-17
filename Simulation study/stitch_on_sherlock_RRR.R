@@ -24,11 +24,14 @@ s %>% group_by(scen.name) %>%
   summarise( mean( is.na(Note) ),
              n() )
 
-s %>% group_by(scen.name, Method, true.effect.dist) %>%
+agg = s %>% filter( !is.na(Method)) %>%
+  group_by(scen.name, Method, true.effect.dist) %>%
   summarise( cover = mean(Cover, na.rm=TRUE),
-             phat = mean(phat), 
-             width = mean(Width),
+             phat = mean(phat, na.rm = TRUE), 
+             width = mean(Width, na.RM = TRUE),
              n = n())
+
+as.data.frame(agg)
 
 # # how close are we to being done?
 # n.reps.per.scen = 500
