@@ -35,6 +35,7 @@ TheoryP = c(0.05, 0.1, 0.2, 0.5)
 
 qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 
+# ~~~ FIX THIS!
 for (i in 1:length(TheoryP) ) {
   new.qs = qnorm( p = 1 - TheoryP[i],
                   mean = mu,
@@ -114,7 +115,7 @@ n.files
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 51:5000) {
+for (i in 5001:10000) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   system( paste("sbatch -p qsu /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds

@@ -22,7 +22,10 @@ plot_group = function( .level,
   }
   
   p = 
-    ggplot( temp, aes_string( x="k", y=.y.name, color="Method" ) ) +
+    ggplot( temp, aes_string( x="k",
+                              y=.y.name,
+                              color="Method",
+                              shape = "true.effect.dist" ) ) +
     #ggplot( temp, aes_string( x="k", y=.y.name, color="Method.pretty", alpha = "prop.finished" ) ) +
     geom_line(lwd=1) +
     geom_point(size=2) +
@@ -44,43 +47,65 @@ plot_group = function( .level,
   
 }  
 
-library(plyr)
 library(dplyr)
 
 #################### READ IN DATA ####################
 
 
-setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Data/Simulation study results/2018-9-10 add P=0.15")
-s3 = read.csv("stitched.csv")
-
-# previous results (P=0.20)
-setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Data/Simulation study results/2018-9-6 add P=0.20")
-s2 = read.csv("stitched.csv")
+# setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Data/Simulation study results/2018-9-10 add P=0.15")
+# s3 = read.csv("stitched.csv")
+# 
+# # previous results (P=0.20)
+# setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Data/Simulation study results/2018-9-6 add P=0.20")
+# s2 = read.csv("stitched.csv")
 
 # previous results (all others)
-setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Data/Simulation study results/2018-8-28 BCa with 10K iterates")
+setwd("~/Desktop")
+#setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Data/Simulation study results/2018-8-28 BCa with 10K iterates")
 s1 = read.csv("stitched.csv")
 
+s = s1
+#s = rbind(s1, s2, s3)
 
-s = rbind(s1, s2, s3)
-s = s[ !is.na(s$scen.name), ]  # gets rid of weird NA rows, but not those related to sim failures
+s = s %>% filter( !is.na(scen.name) & !is.na(Method) )
 s = droplevels(s)
 table(s$scen.name)
 
 
 # what percent of the reps were NOT NA (e.g., didn't hit an error about infinite w due to few iterates or Fisher convergence)?
 prop.finished = s %>% group_by(scen.name) %>%
-                summarise( prop.finished = sum( !is.na(phat) ) / length(phat) )
+                summarise( prop.finished = sum( is.na(Note) ) / length(Note) )
 s = merge(s, prop.finished)
 
 # all scenarios had <10% missing data :)
 min(prop.finished$prop.finished)
 
 
+# ~~ fix mistakes
+# bm
+# from data prep script:
+# Mi = rexp( n = 1, rate = sqrt(1/V) )
+# # now the mean is sqrt(V) rather than mu
+# # shift to have the correct mean (in expectation)
+# Mi = Mi + (mu - sqrt(V))
+
+temp = s %>% filter( true.effect.dist == "expo" ) %>%
+            mutate( # back-shift q
+                    TheoryP.fixed = 1 - pexp( q = q - (mu - sqrt(V)),
+                                          rate = sqrt(1/V) ) )
+# UH-OH. THE TRUTHP'S ARE VERY CLOSE TO THE (WRONG) THEORYP. COULD IT BE THAT
+#  WE'RE ONLY GENERATING FROM A NORMAL?
+
+temp %>% group_by(TheoryP) %>%
+  summarise( TruthP = mean(TruthP), 
+             TheoryP.fixed = mean(TheoryP.fixed))
+
+
+
 #################### DATA WRANGLING ####################
 
 # name the simulation reps
-n.methods = 3
+( n.methods = length( unique(s$Method) ) )
 s$sim.rep = rep( 1:( nrow(s) / n.methods ), each = n.methods )
 
 
@@ -90,17 +115,17 @@ s$plot.panel = paste( expression(tau^2), " = ", s$V,
                       "; true P = ", s$TheoryP,
                       sep = "" )
 
-# indicate reps in which logit method yielded no CI
-# hence the mean coverage by simulation rep is NA 
-keep.rep = s %>% group_by(sim.rep) %>%
-  summarise( logit.was.NA = is.na( mean(Cover) ) )
-
-# logit CI fails for 4% of all reps
-prop.table(table(keep.rep$logit.was.NA))
-
-# merge into main dataset
-s = merge( s, keep.rep, by = "sim.rep")
-prop.table(table(s$logit.was.NA))
+# # indicate reps in which logit method yielded no CI
+# # hence the mean coverage by simulation rep is NA 
+# keep.rep = s %>% group_by(sim.rep) %>%
+#   summarise( logit.was.NA = is.na( mean(Cover) ) )
+# 
+# # logit CI fails for 4% of all reps
+# prop.table(table(keep.rep$logit.was.NA))
+# 
+# # merge into main dataset
+# s = merge( s, keep.rep, by = "sim.rep")
+# prop.table(table(s$logit.was.NA))
 
 s$Cover = as.numeric(s$Cover)
 s$VarCover = as.numeric(s$VarCover)
@@ -108,7 +133,7 @@ s$MeanCover = as.numeric(s$MeanCover)
 
 # summarize results, leaving NA if ANY reps failed (for logit)
 res.all = s %>% 
-  group_by(scen.name, Method) %>%
+  group_by(scen.name, Method, true.effect.dist) %>%
   summarise_if( is.numeric, function(x) mean(x) )
  # summarise_if( is.numeric, function(x) mean(x, na.rm=TRUE) )
 
@@ -133,11 +158,12 @@ res.all$Method = recode( res.all$Method, " 'Original'='Theory' " )
 
 library(ggplot2)
 
-colors=c("orange", "black", "red")
+colors=c("orange", "black", "red", "blue")
 
 
 
 ##### Coverage Plot for Each Level of Tau^2 #####
+# bm
 limits = c(0.8, 1)
 breaks = seq( min(limits), max(limits), 0.05)
 string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
@@ -150,8 +176,8 @@ p1 = plot_group( .level = unique( res.all$V )[1],
                  .breaks = breaks
                  )
 
-string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
-p2 = plot_group( .level = unique( res.all$V )[3],
+string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
+p2 = plot_group( .level = unique( res.all$V )[2],
                  .title = string,
                  .legend = TRUE, 
                  .include.logit = FALSE,
@@ -159,8 +185,8 @@ p2 = plot_group( .level = unique( res.all$V )[3],
                  .breaks = breaks,
                  .y.name = "Cover" )
 
-string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
-p3 = plot_group( .level = unique( res.all$V )[2],
+string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
+p3 = plot_group( .level = unique( res.all$V )[3],
                  .title = string,
                  .legend = TRUE, 
                  .include.logit = FALSE,
@@ -171,7 +197,7 @@ p3 = plot_group( .level = unique( res.all$V )[2],
 library(gridExtra)
 cov = grid.arrange(p1, p2, p3, nrow=3)
 setwd("~/Desktop")
-ggsave( filename = paste("coverage_MAM.png"),
+ggsave( filename = paste("coverage_RRR.png"),
         plot = cov, path=NULL, width=12, height=14, units="in")
 
 
@@ -210,8 +236,41 @@ p3 = plot_group( .level = unique( res.all$V )[2],
 
 library(gridExtra)
 plots = grid.arrange(p1, p2, p3, nrow=3)
-ggsave( filename = paste("width_MAM.png"),
+ggsave( filename = paste("width_RRR.png"),
         plot = plots, path=NULL, width=12, height=14, units="in")
+
+
+##### Phat Bias for Each Level of Tau^2 #####
+string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
+p1 = plot_group( .level = unique( res.all$V )[1],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "phatBias",
+                 .ylab = "Bias",
+                 .limits = c(-0.05,.05),
+                 .breaks = seq(-0.05,0.05,.1))
+
+string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
+p2 = plot_group( .level = unique( res.all$V )[2],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "phatBias",
+                 .ylab = "Bias",
+                 .limits = c(-0.05,.05),
+                 .breaks = seq(-0.05,0.05,.1))
+
+string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
+p3 = plot_group( .level = unique( res.all$V )[3],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "phatBias",
+                 .ylab = "Bias",
+                 .limits = c(-0.05,.05),
+                 .breaks = seq(-0.05,0.05,.1))
+
 
 
 #################### RULES OF THUMB ####################
@@ -263,7 +322,7 @@ View(agg.all)
 
             
 # save all analysis objects for manuscript
-setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (MAM)/Linked to OSF (MAM)/Markdown manuscript")
+setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Markdown manuscript")
 
 save.image("all_simulation_objects.RData")
 

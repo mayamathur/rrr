@@ -253,7 +253,8 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                   V = p$V,
                   muN = p$muN, 
                   minN = p$minN,
-                  sd.w = p$sd.w )
+                  sd.w = p$sd.w,
+                  true.effect.dist = p$true.effect.dist )
 
     
     # # DEBUGGING
