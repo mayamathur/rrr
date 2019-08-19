@@ -35,7 +35,7 @@ TheoryP = c(0.05, 0.1, 0.2, 0.5)
 
 qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
 
-# ~~~ FIX THIS!
+# ~~~~~ FIX THIS!
 for (i in 1:length(TheoryP) ) {
   new.qs = qnorm( p = 1 - TheoryP[i],
                   mean = mu,
@@ -54,6 +54,7 @@ names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w", "true
 TheoryP2 = 1 - pnorm( q = scen.params$q,
                       mean = scen.params$mu,
                       sd = sqrt(scen.params$V) )
+
 scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
 table(scen.params$q, scen.params$V ); qmat  # each 
 

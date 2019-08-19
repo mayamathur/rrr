@@ -12,7 +12,6 @@
 # When results come back, remember I halved the boot.reps from 10,000 to 5,000
 # so check if boot performance is similar to in MAM supplement.
 
-# Bookmark: Make sure we're writing results for NP ensemble. 
 
 ######### FOR CLUSTER USE #########
 
@@ -67,105 +66,107 @@ registerDoParallel(cores=16)
 ######### END OF CLUSTER PART #########
 
 
-# ######### FOR LOCAL USE #########
-# 
-# rm(list=ls())
-# 
-# # # isolate a bad scenario
-# # # lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
-# # k = 10  # running now on Sherlock
-# # mu = 0.5
-# # V = 0.5
-# # minN = 800
-# # muN = NA # placeholder only
-# # sd.w = 1
-# # tail="above"
-# # true.effect.dist = "normal"
-# 
-# # full set of scenarios
-# k = c(10)
-# mu = 0.5  # mean of true effects (log-RR)
-# V = c( 0.5^2 )  # variance of true effects
-# muN = NA # just a placeholder; to be filled in later
-# minN = c( 800 )
+######### FOR LOCAL USE #########
+
+rm(list=ls())
+
+# # isolate a bad scenario
+# # lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
+# k = 10  # running now on Sherlock
+# mu = 0.5
+# V = 0.5
+# minN = 800
+# muN = NA # placeholder only
 # sd.w = 1
-# tail = "above"
-# true.effect.dist = "expo"
-# 
-# # only running P = 0.20 to supplement previous sim results
-# # set q to be the quantiles such that TheoryP is 0.2 for every V
-# TheoryP = c(0.1)
-# 
-# qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
-# 
-# for (i in 1:length(TheoryP) ) {
-#   new.qs = qnorm( p = 1 - TheoryP[i],
-#                   mean = mu,
-#                   sd = sqrt(V) )
-#   qmat[,i] = new.qs
-# }
-# 
-# q = unique( as.vector( qmat ))
-# 
-# # matrix of scenario parameters
-# scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w, true.effect.dist)
-# names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w", "true.effect.dist" )
-# 
-# 
-# # only keep combos of V and q that lead to the TheoryPs we want
-# TheoryP2 = 1 - pnorm( q = scen.params$q,
-#                       mean = scen.params$mu,
-#                       sd = sqrt(scen.params$V) )
-# scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
-# table(scen.params$q, scen.params$V ); qmat  # each
-# 
-# 
-# #start.at = which( my.letters == "aaaa" )
-# start.at = 1
-# scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
-# ( n.scen = length(scen.params[,1]) )
-# 
-# # avoid doing all factorial combinations of muN and minN this way
-# scen.params$muN = scen.params$minN + 50
-# 
-# 
-# 
-# 
-# # sim.reps = 500  # reps to run in this iterate; leave this alone!
-# # boot.reps = 1000
-# sim.reps = 2
-# boot.reps = 200
-# 
-# 
-# library(foreach)
-# library(doParallel)
-# library(dplyr)
-# library(boot)
-# library(purrr)
-# 
-# # read in helper fns
-# setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+# tail="above"
+# true.effect.dist = "normal"
+
+# full set of scenarios
+k = c(10)
+mu = 0.5  # mean of true effects (log-RR)
+V = c( 0.5^2 )  # variance of true effects
+muN = NA # just a placeholder; to be filled in later
+minN = c( 800 )
+sd.w = 1
+tail = "above"
+true.effect.dist = "expo"
+
+# only running P = 0.20 to supplement previous sim results
+# set q to be the quantiles such that TheoryP is a fixed value for every V
+TheoryP = c(0.1)
+
+qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
+
+# calculate the threshold (q) needed to have the desired TheoryP
+#  based on whether effects are generated from normal or expnoential
+for (i in 1:length(TheoryP) ) {
+  new.qs = qnorm( p = 1 - TheoryP[i],
+                  mean = mu,
+                  sd = sqrt(V) )
+  qmat[,i] = new.qs
+}
+
+q = unique( as.vector( qmat ))
+
+# matrix of scenario parameters
+scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w, true.effect.dist)
+names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w", "true.effect.dist" )
+
+
+# only keep combos of V and q that lead to the TheoryPs we want
+TheoryP2 = 1 - pnorm( q = scen.params$q,
+                      mean = scen.params$mu,
+                      sd = sqrt(scen.params$V) )
+scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
+table(scen.params$q, scen.params$V ); qmat  # each
+
+
+#start.at = which( my.letters == "aaaa" )
+start.at = 1
+scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
+( n.scen = length(scen.params[,1]) )
+
+# avoid doing all factorial combinations of muN and minN this way
+scen.params$muN = scen.params$minN + 50
+
+
+
+
+# sim.reps = 500  # reps to run in this iterate; leave this alone!
+# boot.reps = 1000
+sim.reps = 2
+boot.reps = 200
+
+
+library(foreach)
+library(doParallel)
+library(dplyr)
+library(boot)
+library(purrr)
+
+# read in helper fns
+setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+source("functions_RRR.R")
+
+# # ~~~ DEBUGGING: FOR CLUSTER
+# # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+# library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+# setwd("/home/groups/manishad/RRR")
 # source("functions_RRR.R")
-# 
-# # # ~~~ DEBUGGING: FOR CLUSTER
-# # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-# # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-# # setwd("/home/groups/manishad/RRR")
-# # source("functions_RRR.R")
-# 
-# # set the number of cores
-# registerDoParallel(cores=16)
-# 
-# 
-# scen = 1
-# 
-# ######### END OF LOCAL PART #########
+
+# set the number of cores
+registerDoParallel(cores=16)
+
+
+scen = 1
+
+######### END OF LOCAL PART #########
 
 
 ########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION  ###########################
