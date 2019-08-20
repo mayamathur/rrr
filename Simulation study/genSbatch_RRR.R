@@ -3,69 +3,40 @@
 # FOR CLUSTER USE
 path = "/home/groups/manishad/RRR"
 setwd(path)
+source("functions_RRR.R")
 
-# # one scenario - worked locally and on Sherlock
-# k = c(10)
-# mu = 0.5  # mean of true effects (log-RR)
-# V = c( 0.5^2 )  # variance of true effects
-# #V = c( 0.1^2, 0.2^2, 0.5^2 )  # variance of true effects
-# muN = NA # just a placeholder; to be filled in later
-# #minN = c( 100, 800 )
-# minN = c( 800 )
-# sd.w = 1
-# tail = "above"
-# true.effect.dist = c("normal", "expo")
-
+library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
 
 # full set of scenarios
-k = c(5, 10, 15, 20, 50)
-mu = 0.5  # mean of true effects (log-RR)
-V = c( 0.5^2, 0.2^2, 0.1^2 )  # variance of true effects
-muN = NA # just a placeholder; to be filled in later
-minN = c( 100, 800 )
-sd.w = 1
-tail = "above"
-true.effect.dist = c("expo", "normal")
+( scen.params = make_scen_params( k = c(5, 10, 15, 20, 50),
+                                  mu = 0.5,  # mean of true effects (log-RR)
+                                  V = c( 0.5^2, 0.2^2, 0.1^2 ),  # variance of true effects
+                                  muN = NA, # just a placeholder; to be filled in later
+                                  minN = c(100, 800),
+                                  sd.w = 1,
+                                  tail = "above",
+                                  true.effect.dist = c("expo", "normal"), # "expo" or "normal"
+                                  TheoryP = c(0.05, 0.1, 0.2, 0.5) ) )
+( n.scen = nrow(scen.params) )
+# look at it
+head( as.data.frame(scen.params) )
 
+# temp only
+# check difference in TheoryP between normal and exponential
+1 - pnorm( q = calculate_q(true.effect.dist = "expo",
+                           TheoryP = .05, 
+                           mu = 0.5, 
+                           V = 0.5^2),
+           mean = 0.5,
+           sd = sqrt(0.5^2) )
 
-# only running P = 0.20 to supplement previous sim results
-# set q to be the quantiles such that TheoryP is 0.2 for every V
-TheoryP = c(0.05, 0.1, 0.2, 0.5)
-#TheoryP = 0.1
-
-qmat = matrix( NA, nrow = length(V), ncol = length(TheoryP) )
-
-# ~~~~~ FIX THIS!
-for (i in 1:length(TheoryP) ) {
-  new.qs = qnorm( p = 1 - TheoryP[i],
-                  mean = mu,
-                  sd = sqrt(V) )
-  qmat[,i] = new.qs
-}
-
-q = unique( as.vector( qmat ))
-
-# matrix of scenario parameters
-scen.params = expand.grid(k, mu, V, q, muN, minN, tail, sd.w, true.effect.dist)
-names(scen.params) = c("k", "mu", "V", "q", "muN", "minN", "tail", "sd.w", "true.effect.dist" )
-
-
-# only keep combos of V and q that lead to the TheoryPs we want
-TheoryP2 = 1 - pnorm( q = scen.params$q,
-                      mean = scen.params$mu,
-                      sd = sqrt(scen.params$V) )
-
-scen.params = scen.params[ round(TheoryP2,3) %in% TheoryP, ]
-table(scen.params$q, scen.params$V ); qmat  # each 
-
-
-#start.at = which( my.letters == "aaaa" )
-start.at = 1
-scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
-( n.scen = length(scen.params[,1]) )
-
-# avoid doing all factorial combinations of muN and minN this way
-scen.params$muN = scen.params$minN + 50
 
 # write the csv file of params (to Sherlock)
 write.csv( scen.params, "scen_params.csv", row.names = FALSE )
@@ -116,9 +87,9 @@ n.files
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 5001:10000) {
+for (i in 2137:10000) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
-  system( paste("sbatch -p qsu /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
+  system( paste("sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds
 }
 

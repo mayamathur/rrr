@@ -92,7 +92,8 @@ sim_data = function( k,
                      V,
                      muN, 
                      minN,
-                     sd.w ) {
+                     sd.w, 
+                     true.effect.dist) {
   
   
   # initialize estimated ES to values that will enter the while-loop
@@ -114,7 +115,8 @@ sim_data = function( k,
                              V = V, 
                              muN = muN,
                              minN = minN,
-                             sd.w = sd.w )
+                             sd.w = sd.w,
+                             true.effect.dist = true.effect.dist)
       yi = c( yi, study$yi )  # append this study's ES to the list
       vyi = c( vyi, study$vyi )  # append this study's variance to the list
       Mi = c( Mi, study$Mi )  # append this study's mean to the list
@@ -289,6 +291,91 @@ power = function(scen,
   #dt = dt[, lapply(.SD, mean, na.rm=TRUE), by=Method ]
   return( as.data.frame(dt) )
 }
+
+
+########################### FN: MAKE SCENARIO PARAMETERS ###########################
+
+
+# all arguments that are scen parameters can be vectors
+#  for use in expand_grid
+make_scen_params = function( k,
+                             mu,  # mean of true effects (log-RR)
+                             V,  # variance of true effects
+                             muN, # just a placeholder; to be filled in later
+                             minN,
+                             sd.w,
+                             tail,
+                             true.effect.dist, # "expo" or "normal"
+                             TheoryP,
+                             
+                             # number to start scenario names 
+                             start.at = 1) {
+  
+  # full set of scenarios
+  scen.params = expand.grid( k = k,
+                             mu = mu,  # mean of true effects (log-RR)
+                             V = V,  # variance of true effects
+                             muN = muN, # just a placeholder; to be filled in later
+                             minN = minN,
+                             sd.w = sd.w,
+                             tail = tail,
+                             true.effect.dist = true.effect.dist, # "expo" or "normal"
+                             TheoryP = TheoryP)
+  
+  scen.params = scen.params %>% rowwise %>%
+    mutate( q = calculate_q(true.effect.dist = true.effect.dist,
+                            TheoryP = TheoryP, 
+                            mu = mu, 
+                            V = V) )
+  
+  # name the scenarios
+  start.at = 1
+  scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
+  
+  # avoid doing all factorial combinations of muN and minN this way
+  scen.params$muN = scen.params$minN + 50
+  
+  return(scen.params)
+}
+
+
+########################### FN: QUANTILE CALCULATOR FOR A DESIRED THEORYP ###########################
+
+
+# return the threshold q that is the TheoryP^th quantile
+calculate_q = function(true.effect.dist, 
+                       TheoryP,
+                       mu,
+                       V){
+  
+  if ( true.effect.dist == "normal" ) {
+    return( qnorm( p = 1 - TheoryP,
+                   mean = mu,
+                   sd = sqrt(V) ) )
+  }
+  
+  if ( true.effect.dist == "expo" ) {
+    # we generate from a exponential, then shift to achieve the correct mean, 
+    #  so this is the threshold BEFORE shifting
+    # here is the data generation code from sim_data:
+    # Mi = rexp( n = 1, rate = sqrt(1/V) )
+    # Mi = Mi + (mu - sqrt(V))
+    q0 = qexp( p = TheoryP, 
+               rate = sqrt(1/V),
+               lower.tail = FALSE)
+    return( q0 + (mu - sqrt(V) ) )
+  }
+  
+  else stop("true.effect.dist not recognized.")
+}
+# # sanity check
+# ( q = calculate_q( true.effect.dist = "expo",
+#              TheoryP = 0.1, 
+#              mu = 0.5,
+#              V = 0.25^2 ) )
+# Mi = rexp( n = 10000, rate = sqrt(1/(.25^2)) )
+# Mi = Mi + (0.5 - sqrt(.25^2))
+# sum(Mi > q) / length(Mi)
 
 
 ########################### FN: NONPARAMETRIC INFERENCE FROM RUI WANG PAPER ###########################

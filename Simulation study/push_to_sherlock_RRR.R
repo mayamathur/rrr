@@ -5,11 +5,10 @@
 # see the sbatches
 cd /home/groups/manishad/RRR/sbatch_files
 
-sbatch -p qsu /home/groups/manishad/RRR/sbatch_files/1.sbatch
+sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
 
 # check on my running or pending jobs
-squeue -u mmathur -t RUNNING
-squeue -u mmathur -t PENDING
+squeue -u mmathur -o%T -ST | uniq -c
 
 
 # see the datasets
@@ -18,8 +17,8 @@ nano long*
 ls -l . | egrep -c '^-'
 
 # see the errors
-nano /home/groups/manishad/RRR/sbatch_files/slurm*
-nano /home/groups/manishad/RRR/sbatch_files/rm_1.err
+vim /home/groups/manishad/RRR/sbatch_files/slurm*
+vim /home/groups/manishad/RRR/sbatch_files/rm_1.err
 
 # see the scen parameters
 nano /home/groups/manishad/RRR/scen_params.csv
@@ -33,7 +32,7 @@ nano /home/groups/manishad/RRR/sim_results/overall_stitched/sti*
 
 # push all the individual files
 scp /Users/mmathur/Dropbox/Personal\ computer/Independent\ studies/RRR\ estimators/Linked\ to\ OSF\ \(RRR\)/Other\ RRR\ code\ \(git\)/Simulation\ study/* mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR
-
+sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
 
 # see the sbatch files
 cd /home/groups/manishad/RRR/sbatch_files

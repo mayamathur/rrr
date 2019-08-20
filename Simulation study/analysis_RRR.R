@@ -39,6 +39,8 @@ plot_group = function( .level,
     facet_grid( muN.pretty ~ TheoryP.pretty )
     #facet_grid( TheoryP.pretty ~ muN.pretty )
   
+  if ( .ylab == "Bias" ) p = p + geom_hline(yintercept = 0, linetype=2)
+  
   if ( .legend == TRUE ) {
     return(p)
   } else {
@@ -81,24 +83,13 @@ s = merge(s, prop.finished)
 min(prop.finished$prop.finished)
 
 
-# ~~ fix mistakes
-# bm
-# from data prep script:
-# Mi = rexp( n = 1, rate = sqrt(1/V) )
-# # now the mean is sqrt(V) rather than mu
-# # shift to have the correct mean (in expectation)
-# Mi = Mi + (mu - sqrt(V))
 
-temp = s %>% filter( true.effect.dist == "expo" ) %>%
-            mutate( # back-shift q
-                    TheoryP.fixed = 1 - pexp( q = q - (mu - sqrt(V)),
-                                          rate = sqrt(1/V) ) )
-# UH-OH. THE TRUTHP'S ARE VERY CLOSE TO THE (WRONG) THEORYP. COULD IT BE THAT
-#  WE'RE ONLY GENERATING FROM A NORMAL?
-
-temp %>% group_by(TheoryP) %>%
-  summarise( TruthP = mean(TruthP), 
-             TheoryP.fixed = mean(TheoryP.fixed))
+# sanity check for data generation: TheoryP and TruthP should be close
+# keep close eye on tau^2 = 0.01 scenarios because we 
+#  reject samples with tau = 0 estimate
+# minimal bias in these scenarios :) 
+s %>% group_by(V, TheoryP) %>%
+  summarise( TruthP = mean(TruthP) )
 
 
 
@@ -131,13 +122,17 @@ s$Cover = as.numeric(s$Cover)
 s$VarCover = as.numeric(s$VarCover)
 s$MeanCover = as.numeric(s$MeanCover)
 
+
 # summarize results, leaving NA if ANY reps failed (for logit)
 res.all = s %>% 
   group_by(scen.name, Method, true.effect.dist) %>%
+  mutate(EmpVar = var(phat)) %>%
   summarise_if( is.numeric, function(x) mean(x) )
- # summarise_if( is.numeric, function(x) mean(x, na.rm=TRUE) )
 
 res.all = res.all[ !is.na(res.all$Method), ]
+
+# MSE of Phat
+res.all$phatMSE = res.all$phatBias^2 + res.all$EmpVar
 
 # for plotting joy
 res.all$muN.pretty = paste( "E[N] = ", res.all$muN )
@@ -163,7 +158,6 @@ colors=c("orange", "black", "red", "blue")
 
 
 ##### Coverage Plot for Each Level of Tau^2 #####
-# bm
 limits = c(0.8, 1)
 breaks = seq( min(limits), max(limits), 0.05)
 string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
@@ -271,6 +265,50 @@ p3 = plot_group( .level = unique( res.all$V )[3],
                  .limits = c(-0.05,.05),
                  .breaks = seq(-0.05,0.05,.1))
 
+library(gridExtra)
+plots = grid.arrange(p1, p2, p3, nrow=3)
+ggsave( filename = paste("bias_RRR.png"),
+        plot = plots, path=NULL, width=12, height=14, units="in")
+
+
+
+##### Phat MSE for Each Level of Tau^2 #####
+
+# bm 
+string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
+p1 = plot_group( .level = unique( res.all$V )[1],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "phatMSE",
+                 .ylab = "MSE",
+                 .limits = c(0,.05),
+                 .breaks = seq(0, 0.05, .01))
+
+string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
+p2 = plot_group( .level = unique( res.all$V )[2],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "phatMSE",
+                 .ylab = "MSE",
+                 .limits = c(0,.05),
+                 .breaks = seq(0, 0.05, .01))
+
+string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
+p3 = plot_group( .level = unique( res.all$V )[3],
+                 .title = string,
+                 .legend = TRUE, 
+                 .include.logit = FALSE,
+                 .y.name = "phatMSE",
+                 .ylab = "MSE",
+                 .limits = c(0,.05),
+                 .breaks = seq(0, 0.05, .01))
+
+library(gridExtra)
+plots = grid.arrange(p1, p2, p3, nrow=3)
+ggsave( filename = paste("MSE_RRR.png"),
+        plot = plots, path=NULL, width=12, height=14, units="in")
 
 
 #################### RULES OF THUMB ####################
