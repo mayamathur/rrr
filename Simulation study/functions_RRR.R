@@ -512,23 +512,16 @@ stitch_files = function(.results.singles.path, .results.stitched.write.path=.res
   # we only want the ones whose name includes .name.prefix
   keepers = all.files[ grep( .name.prefix, all.files ) ]
   
-  # grab variable names from first file
-  names = names( read.csv(keepers[1] )[-1] )
+  # # grab variable names from first file
+  # names = names( read.csv(keepers[1] )[-1] )
   
-  # initialize stitched dataframe
-  s = as.data.frame( matrix(nrow=1, ncol=length(names)) )
-  names(s) = names
-  
-  
-  
-  # stitch the files
-  for ( i in 1:length(keepers) ) {
-    new.chunk = read.csv(keepers[i])[,-1]
-    s = rbind(s, new.chunk)
-  }
-  
-  s = s[-1,]  # delete annoying NA row
-  s$file.name = keepers[i] 
+  dfs = lapply(keepers, fread)
+  s = rbindlist(dfs)
+  s = as.data.frame(s)
+
+  s = s[ , names(s) != "V1" ]
+
+  if( is.na(s[1,1]) ) s = s[-1,]  # delete annoying NA row
   write.csv(s, paste(.results.stitched.write.path, .stitch.file.name, sep="/") )
   return(s)
 }

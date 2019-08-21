@@ -7,6 +7,7 @@ source("functions_RRR.R")
 
 ######## STITCH LONG FILES ########
 
+library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
 s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/long",
                  .results.stitched.write.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
                  .name.prefix = "long_results",
