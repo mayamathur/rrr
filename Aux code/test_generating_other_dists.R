@@ -154,3 +154,14 @@ qunif2 = function(p,
 # sum(fake$x < q) / length(fake$x); p
 # # works :) 
 
+###################### WHAT DO EXISTING EXPO DATA LOOK LIKE? ###################### 
+
+# highly skewed :) 
+V = 0.01^2
+mu = 0.5
+n = 10000
+Mi = rexp( n = n, rate = sqrt(1/V) )
+# now the mean is sqrt(V) rather than mu
+# shift to have the correct mean (in expectation)
+Mi = Mi + (mu - sqrt(V))
+hist(Mi)

@@ -12,6 +12,7 @@
 # When results come back, remember I halved the boot.reps from 10,000 to 5,000
 # so check if boot performance is similar to in MAM supplement.
 
+# Next up: Use code from test_generating_other_dists to make 2unif data as well
 
 ######### FOR CLUSTER USE #########
 

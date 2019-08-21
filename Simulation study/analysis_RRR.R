@@ -25,7 +25,7 @@ plot_group = function( .level,
     ggplot( temp, aes_string( x="k",
                               y=.y.name,
                               color="Method",
-                              shape = "true.effect.dist" ) ) +
+                              lty = "true.effect.dist" ) ) +
     #ggplot( temp, aes_string( x="k", y=.y.name, color="Method.pretty", alpha = "prop.finished" ) ) +
     geom_line(lwd=1) +
     geom_point(size=2) +
@@ -158,7 +158,7 @@ colors=c("orange", "black", "red", "blue")
 
 
 ##### Coverage Plot for Each Level of Tau^2 #####
-limits = c(0.8, 1)
+limits = c(0, 1)
 breaks = seq( min(limits), max(limits), 0.05)
 string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
 p1 = plot_group( .level = unique( res.all$V )[1],
@@ -310,6 +310,25 @@ plots = grid.arrange(p1, p2, p3, nrow=3)
 ggsave( filename = paste("MSE_RRR.png"),
         plot = plots, path=NULL, width=12, height=14, units="in")
 
+
+
+#################### WINNING METHOD BY SCENARIO ####################
+
+# point estimate winner
+# exclude boot since it's not a "real" point estimate
+est.winners = res.all %>% filter(Method != "Boot") %>%
+  group_by(scen.name, V, TheoryP, true.effect.dist) %>%
+  summarise( MSE.winner = Method[ which.min(phatMSE) ],
+             Bias.winner = Method[ which.min(abs(phatBias)) ] )
+View(est.winners)
+
+# inference winner
+# winning at coverage is defined as having coverage as close to 95% as possible
+inf.winners = res.all %>% group_by(scen.name, TheoryP, true.effect.dist, V) %>%
+  summarise( Coverage.winner = Method[ which.min( abs(Cover-0.95) ) ],
+             Coverage.of.winner = Cover[ which.min( abs(Cover-0.95) ) ],
+             Width.winner = Method[ which.min(Width) ] )
+View(inf.winners)
 
 #################### RULES OF THUMB ####################
 

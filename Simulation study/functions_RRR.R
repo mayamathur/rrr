@@ -519,6 +519,8 @@ stitch_files = function(.results.singles.path, .results.stitched.write.path=.res
   s = as.data.frame( matrix(nrow=1, ncol=length(names)) )
   names(s) = names
   
+  
+  
   # stitch the files
   for ( i in 1:length(keepers) ) {
     new.chunk = read.csv(keepers[i])[,-1]
