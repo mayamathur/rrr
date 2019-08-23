@@ -1,55 +1,12 @@
 
 # avoid saving old copies of objects
-rm(list=ls())
-
-#################### HELPER FNS ####################
-
-# plot one level of heterogeneity  
-plot_group = function( .level,
-                       .title,
-                       .ylab = "Coverage",
-                       .include.logit = FALSE,
-                       .legend = TRUE,
-                       .y.name,
-                       .limits = c(0.7, 1), 
-                       .breaks = seq(0,1,.1) ) {
-
-  if ( .include.logit == TRUE ) {
-    temp = res.all[ res.all$V == .level, ] 
-  } else {
-    temp = res.all[ res.all$V == .level &
-                      res.all$Method != "Logit", ]
-  }
-  
-  p = 
-    ggplot( temp, aes_string( x="k",
-                              y=.y.name,
-                              color="Method",
-                              lty = "true.effect.dist" ) ) +
-    #ggplot( temp, aes_string( x="k", y=.y.name, color="Method.pretty", alpha = "prop.finished" ) ) +
-    geom_line(lwd=1) +
-    geom_point(size=2) +
-    theme_bw() +
-    scale_color_manual(values=colors) +
-    scale_alpha_continuous( limits = c(0,1) ) +
-    geom_hline(yintercept = 0.95, linetype=2) +
-    scale_y_continuous( limits=.limits, breaks=.breaks ) +
-    ylab(.ylab) +
-    ggtitle( .title ) +
-    facet_grid( muN.pretty ~ TheoryP.pretty )
-    #facet_grid( TheoryP.pretty ~ muN.pretty )
-  
-  if ( .ylab == "Bias" ) p = p + geom_hline(yintercept = 0, linetype=2)
-  
-  if ( .legend == TRUE ) {
-    return(p)
-  } else {
-    return(p + theme(legend.position="none"))
-  }
-  
-}  
+#rm(list=ls())
 
 library(dplyr)
+
+# helper fns
+setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+source("functions_analysis_RRR.R")
 
 #################### READ IN DATA ####################
 
@@ -66,6 +23,13 @@ setwd("~/Desktop")
 #setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Data/Simulation study results/2018-8-28 BCa with 10K iterates")
 library(data.table)
 s1 = fread("stitched.csv")
+head(s1)
+
+# ~~~ temp only: fix stupid name situation
+names(s1) = as.character(s1[1,])
+s1 = s1[-1,-1]
+# ~~~~ end temp thing
+
 s1 = as.data.frame(s1)
 s1 = s1[ , names(s1) != "V1" ]
 
@@ -73,20 +37,21 @@ s = s1
 dim(s)
 #s = rbind(s1, s2, s3)
 
-s = s %>% filter( !is.na(scen.name) & !is.na(Method) )
+# how close are we to being done?
+View( s %>% group_by(scen.name) %>% summarise(reps = n()/4) )
+
+# what percent of the reps were NOT NA (e.g., didn't hit an error about infinite w due to few iterates or Fisher convergence)?
+prop.finished = s %>% group_by(scen.name) %>%
+  summarise( prop.finished = sum( is.na(Note) ) / length(Note) )
+s = merge(s, prop.finished)
+
+# remove failed reps, etc.
+s = s %>% filter( !is.na(scen.name) & !is.na(Method) & !is.na(TheoryP))
 s = droplevels(s)
-table(s$scen.name)
 
 # get rid of messed-up rows (e.g., has something wrong for scen.name)
 s = s %>% filter(!is.na(as.numeric(scen.name)) )
 
-# what percent of the reps were NOT NA (e.g., didn't hit an error about infinite w due to few iterates or Fisher convergence)?
-prop.finished = s %>% group_by(scen.name) %>%
-                summarise( prop.finished = sum( is.na(Note) ) / length(Note) )
-s = merge(s, prop.finished)
-
-# all scenarios had <10% missing data :)
-min(prop.finished$prop.finished)
 
 # make sure variables are correct type
 ( make.logical = names(s)[ grepl("Cover", names(s)) ] )
@@ -169,160 +134,41 @@ library(ggplot2)
 
 colors=c("orange", "black", "red", "blue")
 
-
-
-##### Coverage Plot for Each Level of Tau^2 #####
-limits = c(0, 1)
-breaks = seq( min(limits), max(limits), 0.05)
-string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
-p1 = plot_group( .level = unique( res.all$V )[1],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "Cover",
-                 .limits= limits,
-                 .breaks = breaks
-                 )
-
-string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
-p2 = plot_group( .level = unique( res.all$V )[2],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .limits= limits,
-                 .breaks = breaks,
-                 .y.name = "Cover" )
-
-string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
-p3 = plot_group( .level = unique( res.all$V )[3],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .limits= limits,
-                 .breaks = breaks,
-                 .y.name = "Cover" )
-
-library(gridExtra)
-cov = grid.arrange(p1, p2, p3, nrow=3)
-setwd("~/Desktop")
-ggsave( filename = paste("coverage_RRR.png"),
-        plot = cov, path=NULL, width=12, height=14, units="in")
-
-
-
-
-##### CI Width for Each Level of Tau^2 #####
-string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
-p1 = plot_group( .level = unique( res.all$V )[1],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "Width",
-                 .ylab = "CI width",
-                 .limits = c(0,1),
-                 .breaks = seq(0,1,.2))
-
-string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
-p2 = plot_group( .level = unique( res.all$V )[3],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "Width",
-                 .ylab = "CI width",
-                 .limits = c(0,1),
-                 .breaks = seq(0,1,.2))
-
-string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
-p3 = plot_group( .level = unique( res.all$V )[2],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "Width",
-                 .ylab = "CI width",
-                 .limits = c(0,1),
-                 .breaks = seq(0,1,.2))
-
-library(gridExtra)
-plots = grid.arrange(p1, p2, p3, nrow=3)
-ggsave( filename = paste("width_RRR.png"),
-        plot = plots, path=NULL, width=12, height=14, units="in")
-
-
-##### Phat Bias for Each Level of Tau^2 #####
-string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
-p1 = plot_group( .level = unique( res.all$V )[1],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "phatBias",
-                 .ylab = "Bias",
-                 .limits = c(-0.05,.05),
-                 .breaks = seq(-0.05,0.05,.1))
-
-string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
-p2 = plot_group( .level = unique( res.all$V )[2],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "phatBias",
-                 .ylab = "Bias",
-                 .limits = c(-0.05,.05),
-                 .breaks = seq(-0.05,0.05,.1))
-
-string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
-p3 = plot_group( .level = unique( res.all$V )[3],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "phatBias",
-                 .ylab = "Bias",
-                 .limits = c(-0.05,.05),
-                 .breaks = seq(-0.05,0.05,.1))
-
-library(gridExtra)
-plots = grid.arrange(p1, p2, p3, nrow=3)
-ggsave( filename = paste("bias_RRR.png"),
-        plot = plots, path=NULL, width=12, height=14, units="in")
-
-
-
-##### Phat MSE for Each Level of Tau^2 #####
-
 # bm 
-string = bquote( "Panel A:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[1]) )
-p1 = plot_group( .level = unique( res.all$V )[1],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "phatMSE",
-                 .ylab = "MSE",
-                 .limits = c(0,.05),
-                 .breaks = seq(0, 0.05, .01))
 
-string = bquote( "Panel B:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[2]) )
-p2 = plot_group( .level = unique( res.all$V )[2],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "phatMSE",
-                 .ylab = "MSE",
-                 .limits = c(0,.05),
-                 .breaks = seq(0, 0.05, .01))
+all_plots_one_dist(true.effect.dist = "normal",
+                   bias.max = max(abs(res.all$phatBias)) + 0.01,
+                   mse.max = max(res.all$phatMSE) + 0.01,
+                   cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
+                   results.path = "~/Desktop/Plots for each distribution")
 
-string = bquote( "Panel C:" ~ tau^2 ~ "=" ~ .(unique( res.all$V )[3]) )
-p3 = plot_group( .level = unique( res.all$V )[3],
-                 .title = string,
-                 .legend = TRUE, 
-                 .include.logit = FALSE,
-                 .y.name = "phatMSE",
-                 .ylab = "MSE",
-                 .limits = c(0,.05),
-                 .breaks = seq(0, 0.05, .01))
+all_plots_one_dist(true.effect.dist = "expo",
+                   bias.max = max(abs(res.all$phatBias)) + 0.01,
+                   mse.max = max(res.all$phatMSE) + 0.01,
+                   cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
+                   results.path = "~/Desktop/Plots for each distribution")
 
-library(gridExtra)
-plots = grid.arrange(p1, p2, p3, nrow=3)
-ggsave( filename = paste("MSE_RRR.png"),
-        plot = plots, path=NULL, width=12, height=14, units="in")
+
+#################### PLOT EXAMPLE DATA FROM EACH DIST ####################
+
+V.levels = unique(res.all$V)
+
+##### Unif2 #####
+Mi = runif2( n = 10000,
+            mu = 0.5, 
+            V = V.levels[1])$x
+ggplot( data = data.frame(Mi),
+        aes(x = Mi)) +
+  geom_histogram() +
+  theme_minimal()
+
+Mi = runif2( n = 10000,
+             mu = 0.5, 
+             V = V.levels[3])$x
+ggplot( data = data.frame(Mi),
+        aes(x = Mi)) +
+  geom_histogram() +
+  theme_minimal()
 
 
 

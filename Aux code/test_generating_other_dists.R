@@ -42,6 +42,8 @@ sum(Xn > q) / length(Xn)
 # https://stackoverflow.com/questions/17843497/sampling-from-a-t-distribution-in-r
 df = 3
 Xt = rt(n, df=df) * sqrt(V * (df-2)/df) + mu
+mean(Xt); mu
+var(Xt); V
 sum(Xt > q) / length(Xt)
 
 

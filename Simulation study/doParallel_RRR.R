@@ -53,10 +53,11 @@ library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
 library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
 library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
 library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
+library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
 
 
 # for use in ml load R
-# install.packages( c("doParallel", "foreach", "mvtnorm", "StepwiseTest", "matrixcalc"), lib = "/home/groups/manishad/Rpackages/" )
+# install.packages( c("metRology"), lib = "/home/groups/manishad/Rpackages/" )
 
 path = "/home/groups/manishad/RRR"
 setwd(path)
@@ -94,15 +95,15 @@ registerDoParallel(cores=16)
 #                              minN = c( 800 ),
 #                              sd.w = 1,
 #                              tail = "above",
-#                              true.effect.dist = "expo", # "expo" or "normal"
+#                              true.effect.dist = "t.scaled", # "expo", "normal", or "unif2"
 #                              TheoryP = c(0.1) ) )
 # n.scen = nrow(scen.params)
 # 
 # 
 # # sim.reps = 500  # reps to run in this iterate; leave this alone!
 # # boot.reps = 1000
-# sim.reps = 2
-# boot.reps = 200
+# sim.reps = 25
+# boot.reps = 50
 # 
 # 
 # library(foreach)
@@ -146,19 +147,19 @@ registerDoParallel(cores=16)
 # runs sim.reps simulations, each with reps (in scen.params) repetitions
 # each scenario has a parameter called "reps"
 # for ( j in 1:sim.reps ) {
-#   
+#
 #   rs = power(scen=scen)
 #   rs$scen.name = scen
 #   new.row = merge(scen.params, rs)
-#   
+#
 #   # remove redundant parameters column
 #   #new.rows = new.rows[ , !names(new.rows) == "scen.name" ]
-#   
+#
 #   # add row to output file
 #   if ( j == 1 ) results = new.row
 #   if ( j > 1 ) results = rbind( results, new.row )
 #   # results should have boot.reps rows per "j" in the for-loop
-#   
+#
 # }  # end loop over j simulation reps
 
 
@@ -420,8 +421,9 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
 } )[3]  # end timer
 
 
-
 head(rs)
+
+mean(rs$TruthP)
 
 # time in seconds
 rep.time
@@ -430,7 +432,7 @@ rep.time
 # # see results
 # rs %>% group_by(Method) %>% summarise(coverage = mean(Cover, na.rm=TRUE))
 # rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
-# rs %>% group_by(Method) %>% summarise(bias = mean(phat, na.rm=TRUE))
+# rs %>% group_by(Method) %>% summarise(phat = mean(phat, na.rm=TRUE))
 #  # bias
 
 

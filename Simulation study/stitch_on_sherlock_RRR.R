@@ -13,6 +13,9 @@ s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/
                  .name.prefix = "long_results",
                  .stitch.file.name="stitched.csv")
 
+
+
+
 # move it to Desktop
 scp mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR/sim_results/overall_stitched/stitched.csv ~/Desktop
 Vegemite2019
@@ -28,7 +31,7 @@ library(cli, lib.loc = "/home/groups/manishad/Rpackages/")
 # proportion of successful reps (no note)
 s %>% group_by(scen.name) %>%
   summarise( mean( is.na(Note) ),
-             n() )
+             n()/4 )
 
 ( agg = s %>% filter( !is.na(Method)) %>%
   group_by(scen.name, Method, true.effect.dist, TheoryP, k) %>%
@@ -36,7 +39,27 @@ s %>% group_by(scen.name) %>%
     cover = mean(Cover, na.rm=TRUE),
              phat = mean(phat, na.rm = TRUE), 
              width = mean(Width, na.RM = TRUE),
-             n = n()) )
+             n = n()/4) )
+
+
+library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+library(fansi, lib.loc = "/home/groups/manishad/Rpackages/")
+library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+library(utf8, lib.loc = "/home/groups/manishad/Rpackages/")
+library(cli, lib.loc = "/home/groups/manishad/Rpackages/")
+
+# proportion of successful reps (no note)
+s %>% group_by(scen.name) %>%
+  summarise( mean( is.na(Note) ),
+             n()/4 )
+
+(as.data.frame( s %>% filter( Method == "NP sign test") %>%
+    group_by(scen.name, Method, true.effect.dist, TheoryP, V, k) %>%
+    summarise( TruthP = mean(TruthP, na.rm=TRUE),
+               cover = mean(Cover, na.rm=TRUE),
+               phat = mean(phat, na.rm = TRUE), 
+               width = mean(Width, na.RM = TRUE),
+               n = n()/4) ) )
 
 # just sign test
 agg = s %>% filter( Method == "NP sign test") %>%
@@ -44,7 +67,7 @@ agg = s %>% filter( Method == "NP sign test") %>%
   summarise( cover = mean(Cover, na.rm=TRUE),
              phat = mean(phat, na.rm = TRUE), 
              width = mean(Width, na.RM = TRUE),
-             n = n())
+             n = n()/4)
 
 as.data.frame(agg)
 

@@ -13,8 +13,20 @@ library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
 library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
 library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
 library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
+library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
 
-# full set of scenarios
+# full set of scenarios - from expo and normal runs
+# ( scen.params = make_scen_params( k = c(5, 10, 15, 20, 50),
+#                                   mu = 0.5,  # mean of true effects (log-RR)
+#                                   V = c( 0.5^2, 0.2^2, 0.1^2 ),  # variance of true effects
+#                                   muN = NA, # just a placeholder; to be filled in later
+#                                   minN = c(100, 800),
+#                                   sd.w = 1,
+#                                   tail = "above",
+#                                   true.effect.dist = c("expo", "normal"), 
+#                                   TheoryP = c(0.05, 0.1, 0.2, 0.5) ) )
+
+
 ( scen.params = make_scen_params( k = c(5, 10, 15, 20, 50),
                                   mu = 0.5,  # mean of true effects (log-RR)
                                   V = c( 0.5^2, 0.2^2, 0.1^2 ),  # variance of true effects
@@ -22,21 +34,12 @@ library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
                                   minN = c(100, 800),
                                   sd.w = 1,
                                   tail = "above",
-                                  true.effect.dist = c("expo", "normal"), # "expo" or "normal"
-                                  TheoryP = c(0.05, 0.1, 0.2, 0.5) ) )
+                                  true.effect.dist = c("unif2", "t.scaled"), # # "expo", "normal", "unif2", "t.scaled"
+                                  TheoryP = c(0.05, 0.1, 0.2, 0.5),
+                                  start.at = 241 ) )
 ( n.scen = nrow(scen.params) )
 # look at it
 head( as.data.frame(scen.params) )
-
-# temp only
-# check difference in TheoryP between normal and exponential
-1 - pnorm( q = calculate_q(true.effect.dist = "expo",
-                           TheoryP = .05, 
-                           mu = 0.5, 
-                           V = 0.5^2),
-           mean = 0.5,
-           sd = sqrt(0.5^2) )
-
 
 # write the csv file of params (to Sherlock)
 write.csv( scen.params, "scen_params.csv", row.names = FALSE )
@@ -79,7 +82,7 @@ sbatch_params <- data.frame(jobname,
                             stringsAsFactors = F,
                             server_sbatch_path = NA)
 
-#generateSbatch(sbatch_params, runfile_path)
+generateSbatch(sbatch_params, runfile_path)
 
 n.files
 
@@ -87,7 +90,7 @@ n.files
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 18901:24000) {
+for (i in 1240:5000) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   system( paste("sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds
@@ -112,5 +115,5 @@ missed.nums = sbatch_not_run( "/home/groups/manishad/RRR/sim_results/long",
 
 setwd( paste(path, "/sbatch_files", sep="") )
 for (i in missed.nums) {
-  system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
+  system( paste("sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
 }

@@ -40,7 +40,7 @@ sim_one_study = function( mu,
   # simulate total N for each study
   N = round( runif( n = 1, min = minN, max = minN + 2*( muN - minN ) ) ) # draw from uniform centered on muN
   
-  # draw population true effect for this study
+  ##### Draw a Single Population True Effect for This Study #####
   if ( true.effect.dist == "normal" ) {
     Mi = rnorm( n=1, mean=mu, sd=sqrt(V) )
   }
@@ -50,6 +50,17 @@ sim_one_study = function( mu,
     # now the mean is sqrt(V) rather than mu
     # shift to have the correct mean (in expectation)
     Mi = Mi + (mu - sqrt(V))
+  }
+  if ( true.effect.dist == "unif2") {
+    Mi = runif2( n = 1,
+                 mu = mu, 
+                 V = V)$x
+  }
+  if (true.effect.dist == "t.scaled") {
+    Mi = rt.scaled(n = 1,
+                  df = 3,  # fixed for all scenarios to get very heavy tails
+                  mean = mu,
+                  sd = sqrt(V))
   }
   
   ###### Simulate Data For Individual Subjects ######
@@ -79,6 +90,112 @@ sim_one_study = function( mu,
 }
 
 
+##################### FNs FOR UNIFORM MIXTURE #####################
+
+# generate from a uniform mixture with endpoints [-b, -a] and [a, b]
+#  but shifted so that the grand mean is mu
+runif2 = function(n,
+                  mu,
+                  V) {
+  # calculate lower limit for positive distribution, a
+  # arbitrary, but can't have too large or else it;s impossible to find
+  #  a valid b
+  a = sqrt(V)/2  
+  
+  # calculate upper endpoint for positive distribution, b
+  b = abs( 0.5 * ( sqrt(3) * sqrt( 4*V - a^2 ) - a ) )
+  
+  # prior to mean shift
+  components = sample(1:2,
+                      prob=c(0.5, 0.5),
+                      size=n,
+                      replace=TRUE)
+  
+  mins = c( -b, a )
+  maxes = c( -a, b )
+  
+  samples = runif(n=n,
+                  min=mins[components],
+                  max=maxes[components])
+  
+  # mean-shift them
+  samples = samples + mu
+  
+  return( list(x = samples,
+               a = a, 
+               b = b) )
+}
+
+# # sanity check
+# mu = 0.5
+# V = 0.1^2
+# fake = runif2( n = 10000,
+#                mu = mu, 
+#                V = V)$x
+# 
+# hist(fake)
+# mean(fake)
+# var(fake); V
+
+
+# calculate quantile
+qunif2 = function(p, 
+                  mu,
+                  V) {
+  
+  # calculate lower limit for positive distribution, a
+  a = sqrt(V)/2  
+  
+  # calculate upper endpoint for positive distribution, b
+  b = abs( 0.5 * ( sqrt(3) * sqrt( 4*V - a^2 ) - a ) )
+  
+  # in this case, easy because the q must be within
+  #  the negative distribution
+  if (p < 0.5) {
+    # total length of support, not counting the gap, 
+    #  is (b-a)*2
+    # we want a point that is p% of the way through the support
+    
+    # from the lower endpoint of the negative dist, add the proportion of that interval
+    q.shift = -b + p * (b-a)*2
+  }
+  
+  else if (p == 0.5) q.shift = 0
+  
+  # now we're in the positive part of the distribution
+  else if (p > 0.5) {
+    # subtract the 0.5 that's used up by the negative dist
+    # so we want a point that is (p-0.5)% of the way into the support
+    #  of the positive part
+    #  and the positive part has support length (b-a)
+    #q.shift = a + (p - 0.5) * (b-a)
+    
+    #browser()
+    q.temp = -b + p * (b-a)*2
+    q.shift = q.temp + 2*a
+  }
+  
+  q = q.shift + mu
+  return(q)
+}
+
+# # sanity check
+# mu = 0.5
+# V = 0.1^2
+# fake = runif2( n = 10000,
+#                mu = mu,
+#                V = V)
+# 
+# hist(fake$x)
+# mean(fake$x)
+# var(fake$x); V
+# 
+# p = 0.1
+# ( q = qunif2( p = p, 
+#         mu = mu, 
+#         V = V) )
+# sum(fake$x < q) / length(fake$x); p
+# # works :) 
 
 
 ########################### FN: SIMULATE 1 WHOLE DATASET ###########################
@@ -329,7 +446,6 @@ make_scen_params = function( k,
                             V = V) )
   
   # name the scenarios
-  start.at = 1
   scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
   
   # avoid doing all factorial combinations of muN and minN this way
@@ -364,6 +480,20 @@ calculate_q = function(true.effect.dist,
                rate = sqrt(1/V),
                lower.tail = FALSE)
     return( q0 + (mu - sqrt(V) ) )
+  }
+  
+  if ( true.effect.dist == "unif2" ) {
+    return( qunif2( p = 1 - TheoryP, 
+                    mu = mu, 
+                    V = V) )
+  }
+  
+  if (true.effect.dist == "t.scaled") {
+    # from metRology package
+    return( qt.scaled(p = 1 - TheoryP,
+                      df = 3,
+                      mean = mu,
+                      sd = sqrt(V) ) )
   }
   
   else stop("true.effect.dist not recognized.")
@@ -442,6 +572,7 @@ phi <- function(theta=theta,
 # this is my own fn
 # a simpler grid search across Phat values than their search across percentiles
 # since Phat is conveniently bounded
+# calculates p-value for different percentiles, fixing q, rather than for different q, fixing percentile
 prop_stronger_np = function(q,
                             yi,
                             vi,
@@ -779,7 +910,9 @@ sbatch_skeleton <- function() {
 
 
 
-generateSbatch <- function(sbatch_params, runfile_path = NA, run_now = F) {
+generateSbatch <- function(sbatch_params,
+                           runfile_path = NA,
+                           run_now = F) {
   
   #sbatch_params is a data frame with the following columns
   #jobname: string, specifies name associated with job in SLURM queue
@@ -908,4 +1041,7 @@ generateSbatch <- function(sbatch_params, runfile_path = NA, run_now = F) {
   
   return(sbatches)
 }
+
+
+########################### ANALYSIS HELPER FNS ###########################
 
