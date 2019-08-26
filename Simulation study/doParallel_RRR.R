@@ -1,18 +1,7 @@
 
-# Simulations to run for the nonparametric Phat letter:
-# 1.) Does NP - sign test inference do better than boot for small k and 
-#  the worst scenarios in MAM appendix?
+# ensemble-bt version
 
-# 2.) Are there ever scenarios where boot outperforms NP - sign test in 
-#  terms of coverage and width?
-
-# 3.) For NP point estimate with small k or non-normal true effects, what is best:
-#  NP - sign test estimate or NP - ensemble estimate?
-
-# When results come back, remember I halved the boot.reps from 10,000 to 5,000
-# so check if boot performance is similar to in MAM supplement.
-
-# Next up: Use code from test_generating_other_dists to make 2unif data as well
+# note: 2019-8-26_stitched_cumulative.csv has all 4 distributions
 
 ######### FOR CLUSTER USE #########
 
@@ -76,33 +65,23 @@ registerDoParallel(cores=16)
 # setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
 # source("functions_RRR.R")
 # 
-# # # isolate a bad scenario
-# # # lower left of Supplement Panel C, where boot CI and theoretical both had ~85% coverage
-# # k = 10  # running now on Sherlock
-# # mu = 0.5
-# # V = 0.5
-# # minN = 800
-# # muN = NA # placeholder only
-# # sd.w = 1
-# # tail="above"
-# # true.effect.dist = "normal"
-# 
-# # full set of scenarios
-# ( scen.params = make_scen_params( k = c(10),
+# # isolate a bad scenario
+# # row 1, upper panel #3
+# ( scen.params = make_scen_params( k = c(50),
 #                              mu = 0.5,  # mean of true effects (log-RR)
-#                              V = c( 0.5^2 ),  # variance of true effects
+#                              V = c( 0.04 ),  # variance of true effects
 #                              muN = NA, # just a placeholder; to be filled in later
-#                              minN = c( 800 ),
+#                              minN = c( 100 ),
 #                              sd.w = 1,
 #                              tail = "above",
-#                              true.effect.dist = "t.scaled", # "expo", "normal", or "unif2"
-#                              TheoryP = c(0.1) ) )
+#                              true.effect.dist = "unif2", # "expo", "normal", or "unif2"
+#                              TheoryP = c(0.05) ) )
 # n.scen = nrow(scen.params)
 # 
 # 
 # # sim.reps = 500  # reps to run in this iterate; leave this alone!
 # # boot.reps = 1000
-# sim.reps = 25
+# sim.reps = 2
 # boot.reps = 50
 # 
 # 
@@ -203,7 +182,13 @@ write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
 
 ########################### RUN THE ACTUAL SIMULATION ###########################
 
+# global parameters for all scenarios
 CI.level = 0.95
+
+methods.to.run = c("NP ensemble", "NP sign test")
+
+# if running NP sign test, should we bootstrap inference as well?
+boot.ens = TRUE  
 
 rep.time = system.time({
 rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
@@ -258,157 +243,193 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     # for checking coverage of tau^2 CI
     CIs = confint(m)
     
+    rows =     data.frame( TrueMean = p$mu,
+                           EstMean = M,
+                           MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+                           
+                           TrueVar = p$V,
+                           EstVar = t2,
+                           VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                              CIs$random["tau^2", "ci.ub"] ),
+                           
+                           #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
+                           TruthP = p.above,   # based on generated data
+                           phat = ours$Est,  # our estimator
+                           phatBias = ours$Est - p$TheoryP, # phat estimator vs. true proportion above
+                           
+                           # method of calculating CI: exponentiate logit or not?
+                           Method = "Parametric",
+                           
+                           # CI performance
+                           Cover = covers(p$TheoryP, ours$lo, ours$hi),
+                           
+                           Width = ours$hi - ours$lo,
+                           
+                           Note = NA )
     
-    ##### Get Bootstrapped CI #####
-    boot.res = boot( data = d, 
-                     parallel = "multicore",
-                     R = boot.reps, 
-                     statistic = function(original, indices) {
-                       
-                       b = original[indices,]
-                       
-                       mb = rma.uni( yi = b$yi,
-                                     vi = b$vyi,
-                                     measure="SMD",
-                                     knha = TRUE,
-                                     method = "REML")
-                       Mb = mb$b
-                       t2b = mb$tau2
-                       
-                       suppressWarnings( prop_stronger( q = p$q,
-                                                        M = Mb,
-                                                        t2 = t2b,
-                                                        CI.level = CI.level,
-                                                        tail = p$tail )$Est )
-                     }
-    )
-  
     
-    #bootCIs = boot.ci(boot.res, type="perc")
-    bootCIs = boot.ci(boot.res, type="bca")
-    boot.lo = bootCIs$bca[4]
-    boot.hi = bootCIs$bca[5]
-    boot.median = median(boot.res$t)  # median Phat in bootstrap iterates
+    ##### Bootstrap for Parametric #####
+    if ( "Boot" %in% methods.to.run ) {
+      boot.res = boot( data = d, 
+                       parallel = "multicore",
+                       R = boot.reps, 
+                       statistic = function(original, indices) {
+                         
+                         b = original[indices,]
+                         
+                         mb = rma.uni( yi = b$yi,
+                                       vi = b$vyi,
+                                       measure="SMD",
+                                       knha = TRUE,
+                                       method = "REML")
+                         Mb = mb$b
+                         t2b = mb$tau2
+                         
+                         suppressWarnings( prop_stronger( q = p$q,
+                                                          M = Mb,
+                                                          t2 = t2b,
+                                                          CI.level = CI.level,
+                                                          tail = p$tail )$Est )
+                       }
+      )
+      
+      #bootCIs = boot.ci(boot.res, type="perc")
+      bootCIs = boot.ci(boot.res, type="bca")
+      boot.lo = bootCIs$bca[4]
+      boot.hi = bootCIs$bca[5]
+      boot.median = median(boot.res$t)  # median Phat in bootstrap iterates
+      
+      # boot for parametric
+      rows = add_row( rows,
+                      TrueMean = p$mu,
+                      EstMean = M, 
+                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+                      
+                      TrueVar = p$V,
+                      EstVar = t2,
+                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                         CIs$random["tau^2", "ci.ub"] ),
+                      
+                      #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
+                      TruthP = p.above,   # based on generated data
+                      phat = boot.median,  # note that this is the median of the bootstrap iterates
+                      phatBias = boot.median - p$TheoryP, 
+                      
+                      # method of calculating CI: exponentiate logit or not?
+                      Method = "Boot",
+                      
+                      # CI performance
+                      Cover = covers(p$TheoryP, boot.lo, boot.hi),
+                      
+                      Width = boot.hi - boot.lo,
+                      
+                      Note = NA)
+    }
     
-    ##### Get Nonparametric Phat and CI (Rui Wang) #####
-    Phat.NP = prop_stronger_np( q = p$q,
+    ##### Nonparametric Sign Test (Rui Wang) #####
+
+    if ("NP sign test" %in% methods.to.run) {
+      Phat.NP = prop_stronger_np( q = p$q,
                                   yi = d$yi,
                                   vi = d$vyi,
                                   tail = "above",
                                   R = 2000,
                                   return.vectors = FALSE)
-    
-    ##### Get Nonparametric Phat and CI (Wang ensemble) #####
-    write.csv("nothing", "flag1.csv")
-    
-    ens = my_ens( yi = d$yi, 
-                  sei = sqrt(d$vyi) )
-    if ( p$tail == "above" ) Phat.NP.ens = sum(ens > c(p$q)) / length(ens)
-    if ( p$tail == "below" ) Phat.NP.ens = sum(ens < c(p$q)) / length(ens)
-    
-    write.csv(Phat.NP.ens, "Phat_NP_ens.csv")
-    
- 
-      rows =     data.frame( TrueMean = p$mu,
-                             EstMean = M,
-                             MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-
-                             TrueVar = p$V,
-                             EstVar = t2,
-                             VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-                                                CIs$random["tau^2", "ci.ub"] ),
-
-                             #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
-                             TruthP = p.above,   # based on generated data
-                             phat = ours$Est,  # our estimator
-                             phatBias = ours$Est - p$TheoryP, # phat estimator vs. true proportion above
-
-                             # method of calculating CI: exponentiate logit or not?
-                             Method = "Parametric",
-
-                             # CI performance
-                             Cover = covers(p$TheoryP, ours$lo, ours$hi),
-
-                             Width = ours$hi - ours$lo,
-
-                             Note = NA )
       
-      # debugging
-      write.csv("nothing", "flag2.csv")
-      
-      rows = add_row( rows,
-                      TrueMean = p$mu,
-                      EstMean = M, 
-                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-
-                      TrueVar = p$V,
-                      EstVar = t2,
-                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-                                         CIs$random["tau^2", "ci.ub"] ),
-
-                      #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
-                      TruthP = p.above,   # based on generated data
-                      phat = boot.median,  # note that this is the median of the bootstrap iterates
-                      phatBias = boot.median - p$TheoryP, 
-
-                      # method of calculating CI: exponentiate logit or not?
-                      Method = "Boot",
-
-                      # CI performance
-                      Cover = covers(p$TheoryP, boot.lo, boot.hi),
-
-                      Width = boot.hi - boot.lo,
-
-                      Note = NA)
-
       rows = add_row( rows,
                       TrueMean = p$mu,
                       EstMean = NA,
                       MeanCover = NA,
-
+                      
                       TrueVar = NA,
                       EstVar = NA,
                       VarCover = NA,
-
+                      
                       #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
                       TruthP = p.above,   # based on generated data
                       phat = Phat.NP$Est,  # nonparametric estimator
                       phatBias = Phat.NP$Est - p$TheoryP, # phat estimator vs. true proportion above
-
+                      
                       # method of calculating CI: exponentiate logit or not?
                       Method = "NP sign test",
-
+                      
                       # CI performance
                       Cover = covers(p$TheoryP, Phat.NP$lo, Phat.NP$hi),
-
+                      
                       Width = Phat.NP$hi - Phat.NP$lo,
-
+                      
                       Note = NA)
+    }
+
+  
+
+    ##### Get Ensemble Phat and CI (Wang ensemble) #####
+    #write.csv("nothing", "flag1.csv")
+    # this method has the additional option to compute only the point estimate
+    #  but not bootstrap a CI
+    
+    if ("NP ensemble" %in% methods.to.run) {
+      ens = my_ens( yi = d$yi, 
+                    sei = sqrt(d$vyi) )
+      if ( p$tail == "above" ) Phat.NP.ens = sum(ens > c(p$q)) / length(ens)
+      if ( p$tail == "below" ) Phat.NP.ens = sum(ens < c(p$q)) / length(ens)
       
+      if ( boot.ens == TRUE ) {
+        tryCatch({
+          boot.res.ens = boot( data = d, 
+                               parallel = "multicore",
+                               R = boot.reps, 
+                               statistic = function(original, indices) {
+                                 
+                                 b = original[indices,]
+                                 
+                                 ens.b = my_ens( yi = b$yi, 
+                                                 sei = sqrt(b$vyi) )
+                                 if ( p$tail == "above" ) return( sum(ens.b > c(p$q)) / length(ens.b) )
+                                 if ( p$tail == "below" ) return( sum(ens.b < c(p$q)) / length(ens.b) )
+                               }
+          )
+          
+          bootCIs.ens = boot.ci(boot.res.ens, type="bca")
+          boot.lo.ens = bootCIs.ens$bca[4]
+          boot.hi.ens = bootCIs.ens$bca[5]
+          
+        }, error = function(err){
+          boot.lo.ens <<- NA
+          boot.hi.ens <<- NA
+        })
+        
+      } else {
+        boot.lo.ens = NA
+        boot.hi.ens = NA
+      }
+      
+      # NP ensemble
       rows = add_row( rows,
                       TrueMean = p$mu,
                       EstMean = NA,
                       MeanCover = NA,
-
+                      
                       TrueVar = NA,
                       EstVar = NA,
                       VarCover = NA,
-
+                      
                       #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
                       TruthP = p.above,   # based on generated data
                       phat = Phat.NP.ens,  # nonparametric estimator
                       phatBias = Phat.NP.ens - p$TheoryP, # phat estimator vs. true proportion above
-
+                      
                       # method of calculating CI: exponentiate logit or not?
                       Method = "NP ensemble",
-
+                      
                       # CI performance
-                      Cover = NA,
-
-                      Width = NA,
-
+                      Cover = covers(p$TheoryP, boot.lo.ens, boot.hi.ens),
+                      
+                      Width = boot.hi.ens - boot.lo.ens,
+                      
                       Note = NA)
-
+    }
+   
 
       # add in scenario parameters
       rows$scen.name = scen
@@ -423,14 +444,17 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
 
 head(rs)
 
-mean(rs$TruthP)
 
 # time in seconds
 rep.time
 
 # # ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
 # # see results
-# rs %>% group_by(Method) %>% summarise(coverage = mean(Cover, na.rm=TRUE))
+# rs %>% group_by(Method) %>%
+#   summarise(coverage = mean(Cover, na.rm=TRUE),
+#             prop.na = mean(is.na(Cover)),
+#             n())
+# 
 # rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
 # rs %>% group_by(Method) %>% summarise(phat = mean(phat, na.rm=TRUE))
 #  # bias

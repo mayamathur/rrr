@@ -19,6 +19,7 @@ simulate.dist.from.scratch = FALSE
 #################### READ IN DATA ####################
 
 # current results (unif2 and t)
+# ~~~ replace with the file called "stitched_unif_t"
 setwd("~/Desktop")
 library(data.table)
 s1 = fread("stitched.csv")
@@ -42,11 +43,6 @@ dim(s)
 # how close are we to being done?
 View( s %>% group_by(scen.name) %>% summarise(reps = n()/4) )
 
-# what percent of the reps were NOT NA (e.g., didn't hit an error about infinite w due to few iterates or Fisher convergence)?
-prop.finished = s %>% group_by(scen.name) %>%
-  summarise( prop.finished = sum( is.na(Note) ) / length(Note) )
-s = merge(s, prop.finished)
-
 # remove failed reps, etc.
 s = s %>% filter( !is.na(scen.name) & !is.na(Method) & !is.na(TheoryP))
 s = droplevels(s)
@@ -66,6 +62,18 @@ s = s %>%
   mutate_at(make.logical, as.logical) %>%
   mutate_at(make.numeric, as.numeric) 
 
+# number of simulations per scenario
+#  not including sim failures
+s = s %>% group_by(scen.name) %>%
+  mutate( sim.reps = n()/4 )
+
+
+# temp only - check one scenario
+temp = s %>% filter( k == 50 & V == 0.25 & minN == 100 & true.effect.dist == "unif2" & TheoryP == .2)
+temp %>% group_by(Method) %>%
+  filter(!is.na(Cover)) %>%
+  summarise(Cover = mean(Cover), n())
+# only 40 data points
 
 
 
@@ -132,6 +140,10 @@ res.all$Method = recode( res.all$Method, " 'Original'='Theory' " )
 #  that line because would be an unfair comparison to original method,
 #  which always works
 
+# fix coverage limits
+# also plot 90% coverage line
+
+
 library(ggplot2)
 
 colors=c("orange", "black", "red", "blue")
@@ -139,7 +151,7 @@ colors=c("orange", "black", "red", "blue")
 all_plots_one_dist(true.effect.dist = "expo",
                    bias.max = max(abs(res.all$phatBias)) + 0.01,
                    mse.max = max(res.all$phatMSE) + 0.01,
-                   cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
+                   cover.min = .1,
                    results.path = "~/Desktop/Plots for each distribution")
 
 all_plots_one_dist(true.effect.dist = "normal",
@@ -151,7 +163,7 @@ all_plots_one_dist(true.effect.dist = "normal",
 all_plots_one_dist(true.effect.dist = "unif2",
                    bias.max = max(abs(res.all$phatBias)) + 0.01,
                    mse.max = max(res.all$phatMSE) + 0.01,
-                   cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
+                   cover.min = .1,
                    results.path = "~/Desktop/Plots for each distribution")
 
 all_plots_one_dist(true.effect.dist = "t.scaled",
@@ -159,81 +171,6 @@ all_plots_one_dist(true.effect.dist = "t.scaled",
                    mse.max = max(res.all$phatMSE) + 0.01,
                    cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
                    results.path = "~/Desktop/Plots for each distribution")
-
-
-#################### PLOT EXAMPLE DATA FROM EACH DIST ####################
-
-vec = c("normal", "expo", "unif2", "t.scaled")
-vec2 = c(0.25, 0.16, 0.09, 0.04, 0.01)
-
-params = as.data.frame( expand.grid(vec, vec2) )
-names(params) = c("dist", "V")
-
-if ( simulate.dist.from.scratch == TRUE ) {
-  sims = apply( params,
-                MARGIN = 1, 
-                FUN = function(row) {
-                  d = sim_data( k = 1000,
-                                mu = 0.5,
-                                V = as.numeric(row[["V"]]),
-                                muN = 850,
-                                minN = 800,
-                                sd.w = 1,
-                                true.effect.dist = row[["dist"]])
-                  d$true.effect.dist = row[["dist"]]
-                  d$V = as.numeric(row[["V"]])
-                  return(d)
-                } )
-  
-  sims = do.call(rbind, sims)
-  setwd(results.dist.dir)
-  write.csv(sims, 
-            "simulated_density_data.csv",
-            row.names = FALSE)
-} else {
-  setwd(results.dist.dir)
-  sims = read.csv("simulated_density_data.csv")
-}
-
-
-# for plotting joy
-sims$dist.pretty = "Normal"
-sims$dist.pretty[ sims$true.effect.dist == "expo"] = "Exponential"
-sims$dist.pretty[ sims$true.effect.dist == "t.scaled"] = "t"
-sims$dist.pretty[ sims$true.effect.dist == "unif2"] = "Uniform mixture"
-
-# for plotting joy
-sims$V.pretty = paste( expression(tau^2), " = ", sims$V,
-                                sep = "")
-
-# make density plot
-ggplot( data = sims,
-        aes(x = Mi,
-            fill = dist.pretty)) +
-  #geom_histogram(bins=20) +
-  geom_vline(xintercept = 0.5, color = "gray") +
-  geom_density(adjust=.5) +
-  theme_bw() +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        # last two arguments remove gridlines
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()) +
-  scale_x_continuous(breaks = seq(-0.5, 1.5, .5),
-                     limits = c(-0.5, 1.5)) +
-  facet_grid(dist.pretty ~ V.pretty) +
-  xlab( bquote(theta[i]) ) +
-  ylab("") +
-  labs(fill = "")
-# 11 x 8 works well
-
-# # sanity check
-# # since t looks just like normal, confirm via Shapiro that 
-# #  it really is different
-# sims %>% filter(dist.pretty == "Normal") %>%
-#   group_by(V) %>% 
-#   summarise( shapiro.p = shapiro.test(Mi)$p.value )
-# # works :) 
 
 
 #################### WINNING METHOD BY SCENARIO ####################
@@ -344,7 +281,7 @@ View( res.all %>% filter(V > 0.04) %>%
 
 ##### Point Estimates #####
 # filter out the levels of heterogeneity for which we don't recommend our methods
-( est.table = res.all %>% filter(V > 0.01) %>%
+( est.table = res.all %>% filter(V > 0.04) %>%
     group_by(true.effect.dist, Method) %>%
     summarise( Mean.Abs.Bias = mean( abs(phatBias) ),
                Max.Abs.Bias = max( abs(phatBias) ),
@@ -356,4 +293,80 @@ View( res.all %>% filter(V > 0.04) %>%
                Max.MSE = max(phatMSE) ) )
 
 View(est.table)
+
+
+
+#################### PLOT EXAMPLE DATA FROM EACH DIST ####################
+
+vec = c("normal", "expo", "unif2", "t.scaled")
+vec2 = c(0.25, 0.16, 0.09, 0.04, 0.01)
+
+params = as.data.frame( expand.grid(vec, vec2) )
+names(params) = c("dist", "V")
+
+if ( simulate.dist.from.scratch == TRUE ) {
+  sims = apply( params,
+                MARGIN = 1, 
+                FUN = function(row) {
+                  d = sim_data( k = 1000,
+                                mu = 0.5,
+                                V = as.numeric(row[["V"]]),
+                                muN = 850,
+                                minN = 800,
+                                sd.w = 1,
+                                true.effect.dist = row[["dist"]])
+                  d$true.effect.dist = row[["dist"]]
+                  d$V = as.numeric(row[["V"]])
+                  return(d)
+                } )
+  
+  sims = do.call(rbind, sims)
+  setwd(results.dist.dir)
+  write.csv(sims, 
+            "simulated_density_data.csv",
+            row.names = FALSE)
+} else {
+  setwd(results.dist.dir)
+  sims = read.csv("simulated_density_data.csv")
+}
+
+
+# for plotting joy
+sims$dist.pretty = "Normal"
+sims$dist.pretty[ sims$true.effect.dist == "expo"] = "Exponential"
+sims$dist.pretty[ sims$true.effect.dist == "t.scaled"] = "t"
+sims$dist.pretty[ sims$true.effect.dist == "unif2"] = "Uniform mixture"
+
+# for plotting joy
+sims$V.pretty = paste( expression(tau^2), " = ", sims$V,
+                       sep = "")
+
+# make density plot
+ggplot( data = sims,
+        aes(x = Mi,
+            fill = dist.pretty)) +
+  #geom_histogram(bins=20) +
+  geom_vline(xintercept = 0.5, color = "gray") +
+  geom_density(adjust=.5) +
+  theme_bw() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        # last two arguments remove gridlines
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(breaks = seq(-0.5, 1.5, .5),
+                     limits = c(-0.5, 1.5)) +
+  facet_grid(dist.pretty ~ V.pretty) +
+  xlab( bquote(theta[i]) ) +
+  ylab("") +
+  labs(fill = "")
+# 11 x 8 works well
+
+# # sanity check
+# # since t looks just like normal, confirm via Shapiro that 
+# #  it really is different
+# sims %>% filter(dist.pretty == "Normal") %>%
+#   group_by(V) %>% 
+#   summarise( shapiro.p = shapiro.test(Mi)$p.value )
+# # works :) 
 
