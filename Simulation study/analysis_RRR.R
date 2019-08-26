@@ -3,39 +3,41 @@
 #rm(list=ls())
 
 library(dplyr)
+library(metRology)
+library(ggplot2)
 
 # helper fns
-setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+code.dir = "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study"
+setwd(code.dir)
 source("functions_analysis_RRR.R")
+source("functions_RRR.R")  # for sim_data
+
+# where to save the simulated data for density plots
+results.dist.dir = "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulated data to show distributions"
+simulate.dist.from.scratch = FALSE
 
 #################### READ IN DATA ####################
 
-
-# setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Data/Simulation study results/2018-9-10 add P=0.15")
-# s3 = fread("stitched.csv")
-# 
-# # previous results (P=0.20)
-# setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Data/Simulation study results/2018-9-6 add P=0.20")
-# s2 = fread("stitched.csv")
-
-# previous results (all others)
+# current results (unif2 and t)
 setwd("~/Desktop")
-#setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Data/Simulation study results/2018-8-28 BCa with 10K iterates")
 library(data.table)
 s1 = fread("stitched.csv")
+s1 = s1[-1,-1]
 head(s1)
 
-# ~~~ temp only: fix stupid name situation
-names(s1) = as.character(s1[1,])
-s1 = s1[-1,-1]
-# ~~~~ end temp thing
+# previous results (expo and normal)
+setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation results/2019-8-20 normal and expo")
+s2 = fread("stitched_expo_normal.csv")
+# fix stupid names situation
+names(s2) = as.character(s2[1,])
+s2 = s2[-1,-1]
 
 s1 = as.data.frame(s1)
-s1 = s1[ , names(s1) != "V1" ]
+s2 = as.data.frame(s2)
 
-s = s1
+s = rbind(s1, s2)
 dim(s)
-#s = rbind(s1, s2, s3)
+
 
 # how close are we to being done?
 View( s %>% group_by(scen.name) %>% summarise(reps = n()/4) )
@@ -134,7 +136,11 @@ library(ggplot2)
 
 colors=c("orange", "black", "red", "blue")
 
-# bm 
+all_plots_one_dist(true.effect.dist = "expo",
+                   bias.max = max(abs(res.all$phatBias)) + 0.01,
+                   mse.max = max(res.all$phatMSE) + 0.01,
+                   cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
+                   results.path = "~/Desktop/Plots for each distribution")
 
 all_plots_one_dist(true.effect.dist = "normal",
                    bias.max = max(abs(res.all$phatBias)) + 0.01,
@@ -142,7 +148,13 @@ all_plots_one_dist(true.effect.dist = "normal",
                    cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
                    results.path = "~/Desktop/Plots for each distribution")
 
-all_plots_one_dist(true.effect.dist = "expo",
+all_plots_one_dist(true.effect.dist = "unif2",
+                   bias.max = max(abs(res.all$phatBias)) + 0.01,
+                   mse.max = max(res.all$phatMSE) + 0.01,
+                   cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
+                   results.path = "~/Desktop/Plots for each distribution")
+
+all_plots_one_dist(true.effect.dist = "t.scaled",
                    bias.max = max(abs(res.all$phatBias)) + 0.01,
                    mse.max = max(res.all$phatMSE) + 0.01,
                    cover.min = min(res.all$Cover, na.rm = TRUE) - 0.05,
@@ -151,25 +163,77 @@ all_plots_one_dist(true.effect.dist = "expo",
 
 #################### PLOT EXAMPLE DATA FROM EACH DIST ####################
 
-V.levels = unique(res.all$V)
+vec = c("normal", "expo", "unif2", "t.scaled")
+vec2 = c(0.25, 0.16, 0.09, 0.04, 0.01)
 
-##### Unif2 #####
-Mi = runif2( n = 10000,
-            mu = 0.5, 
-            V = V.levels[1])$x
-ggplot( data = data.frame(Mi),
-        aes(x = Mi)) +
-  geom_histogram() +
-  theme_minimal()
+params = as.data.frame( expand.grid(vec, vec2) )
+names(params) = c("dist", "V")
 
-Mi = runif2( n = 10000,
-             mu = 0.5, 
-             V = V.levels[3])$x
-ggplot( data = data.frame(Mi),
-        aes(x = Mi)) +
-  geom_histogram() +
-  theme_minimal()
+if ( simulate.dist.from.scratch == TRUE ) {
+  sims = apply( params,
+                MARGIN = 1, 
+                FUN = function(row) {
+                  d = sim_data( k = 1000,
+                                mu = 0.5,
+                                V = as.numeric(row[["V"]]),
+                                muN = 850,
+                                minN = 800,
+                                sd.w = 1,
+                                true.effect.dist = row[["dist"]])
+                  d$true.effect.dist = row[["dist"]]
+                  d$V = as.numeric(row[["V"]])
+                  return(d)
+                } )
+  
+  sims = do.call(rbind, sims)
+  setwd(results.dist.dir)
+  write.csv(sims, 
+            "simulated_density_data.csv",
+            row.names = FALSE)
+} else {
+  setwd(results.dist.dir)
+  sims = read.csv("simulated_density_data.csv")
+}
 
+
+# for plotting joy
+sims$dist.pretty = "Normal"
+sims$dist.pretty[ sims$true.effect.dist == "expo"] = "Exponential"
+sims$dist.pretty[ sims$true.effect.dist == "t.scaled"] = "t"
+sims$dist.pretty[ sims$true.effect.dist == "unif2"] = "Uniform mixture"
+
+# for plotting joy
+sims$V.pretty = paste( expression(tau^2), " = ", sims$V,
+                                sep = "")
+
+# make density plot
+ggplot( data = sims,
+        aes(x = Mi,
+            fill = dist.pretty)) +
+  #geom_histogram(bins=20) +
+  geom_vline(xintercept = 0.5, color = "gray") +
+  geom_density(adjust=.5) +
+  theme_bw() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        # last two arguments remove gridlines
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(breaks = seq(-0.5, 1.5, .5),
+                     limits = c(-0.5, 1.5)) +
+  facet_grid(dist.pretty ~ V.pretty) +
+  xlab( bquote(theta[i]) ) +
+  ylab("") +
+  labs(fill = "")
+# 11 x 8 works well
+
+# # sanity check
+# # since t looks just like normal, confirm via Shapiro that 
+# #  it really is different
+# sims %>% filter(dist.pretty == "Normal") %>%
+#   group_by(V) %>% 
+#   summarise( shapiro.p = shapiro.test(Mi)$p.value )
+# # works :) 
 
 
 #################### WINNING METHOD BY SCENARIO ####################
@@ -210,7 +274,6 @@ rule_of_thumb = function( true.effect.dist,
 }
 rule_of_thumb("expo", .0005)
 
-# bm
 res.win = s %>% group_by(scen.name) %>%
   summarise( k = k[1],
              mu = mu[1],
@@ -249,64 +312,48 @@ agg.win = res.win %>% group_by(V, true.effect.dist) %>%
 # note: filtering by k > 5 doesn't rescue the low-heterogeneity scenarios
 View(agg.win)
 
-#################### RULES OF THUMB ####################
 
-# rule_of_thumb = function( Pmin ) {
-#   min.cover = min( res.all$Cover[ res.all$TheoryP >= Pmin & 
-#                                     res.all$Method == "Theory"],
-#                    na.rm = TRUE )
-#   mean.cover =   mean( res.all$Cover[ res.all$TheoryP >= Pmin &
-#                                         res.all$Method == "Theory" ],
-#                        na.rm = TRUE )
-#   
-#   print( paste("Min: ", min.cover, sep="") )
-#   print( paste("Mean: ", mean.cover, sep="") )
-#   print("")
-# }
-# 
-# 
-# # choose a rule of thumb by looking at min and mean coverage in scenarios 
-# #  fulfilling the rule
-# vapply( c(0.30, 0.20, 0.15, 0.10),
-#         rule_of_thumb,
-#         FUN.VALUE = "sdf" )
-# 
-# 
-# 
-# # proportion of all scenarios with coverage > 0.90
-# agg.rot = res.all %>% 
-# group_by( Method ) %>%
-#             filter( TheoryP >= 0.15 & 
-#                       Method != "Logit" ) %>%
-#             summarise( cov.over.0.90 = mean( Cover > 0.90, na.rm = TRUE ),
-#                        cov.over.0.85 = mean( Cover > 0.85, na.rm = TRUE ),
-#                       min.cov = min( Cover, na.rm = TRUE ),
-#                       mean.cov = mean( Cover, na.rm = TRUE )  )
-# 
-# View(agg.rot)
-# 
-# 
-# agg.all = res.all %>% group_by(  
-#                             Method 
-#             ) %>%
-#               filter( Method != "Logit" ) %>%
-#               summarise( cov.over.0.90 = mean( Cover > 0.90, na.rm = TRUE ),
-#                          cov.over.0.85 = mean( Cover > 0.85, na.rm = TRUE ),
-#                          min.cov = min( Cover, na.rm = TRUE ),
-#                          mean.cov = mean( Cover, na.rm = TRUE )  )
-# View(agg.all)
-# 
-#             
-# # save all analysis objects for manuscript
-# setwd("~/Dropbox/Personal computer/Independent studies/Meta-analysis metrics (RRR)/Linked to OSF (RRR)/Markdown manuscript")
-# 
-# save.image("all_simulation_objects.RData")
-# 
-# # save( list = ls(agg.rot, agg.all),
-# #       file = "all_simulation_objects.RData" )
+#################### ** SUMMARIZE RESULTS FOR PAPER ####################
+
+# bm 
+##### Inference #####
+# filter out the levels of heterogeneity for which we don't recommend our methods
+inf.table = res.all %>% filter(V > 0.04) %>%
+  filter(Method != "NP ensemble") %>%  # this method doesn't give inference
+  group_by(true.effect.dist, Method) %>%
+  summarise( Mean.Cover = mean(Cover, na.rm = TRUE),
+             Min.Cover = min(Cover, na.rm = TRUE),
+             #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
+             Cover.Above.90 = sum(Cover>.9)/length(Cover),
+             
+             Width = mean(Width, na.rm = TRUE) )
+
+View(inf.table)
 
 
+# find scenarios where NP sign test does fine
+View( res.all %>% filter(V > 0.04) %>%
+  filter(Method == "NP sign test") %>%  # this method doesn't give inference
+  group_by(true.effect.dist, Method) %>%
+  summarise( Mean.Cover = mean(Cover, na.rm = TRUE),
+             Min.Cover = min(Cover, na.rm = TRUE),
+             #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
+             Cover.Above.90 = sum(Cover>.9)/length(Cover),
+             
+             Width = mean(Width, na.rm = TRUE) ) )
 
+##### Point Estimates #####
+# filter out the levels of heterogeneity for which we don't recommend our methods
+( est.table = res.all %>% filter(V > 0.01) %>%
+    group_by(true.effect.dist, Method) %>%
+    summarise( Mean.Abs.Bias = mean( abs(phatBias) ),
+               Max.Abs.Bias = max( abs(phatBias) ),
+               
+               # Mean.Rel.Bias = max( abs(phatBias) / TheoryP ),
+               # Max.Rel.Bias = mean( abs(phatBias) / TheoryP ),
+               
+               Mean.MSE = mean(phatMSE),
+               Max.MSE = max(phatMSE) ) )
 
-
+View(est.table)
 

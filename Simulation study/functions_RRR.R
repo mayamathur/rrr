@@ -539,7 +539,7 @@ phi <- function(theta=theta,
   
   # "score" is equivalent to kth contribution of sum in 
   #  first eq. on page 4 (see my note in sidebar for equivalence)
-  score<-pnorm( (mu-theta)/theta.sd ) - 0.5  
+  score <- pnorm( (mu-theta)/theta.sd ) - 0.5  
   # OBSERVED test stat
   stat<-sum(score)
   
