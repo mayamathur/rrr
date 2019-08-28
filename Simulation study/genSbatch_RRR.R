@@ -27,16 +27,16 @@ library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
 #                                   TheoryP = c(0.05, 0.1, 0.2, 0.5) ) )
 
 
-( scen.params = make_scen_params( k = c(5, 10, 15, 20, 50),
+( scen.params = make_scen_params( k = rev(c(5, 10, 15, 20, 50)),
                                   mu = 0.5,  # mean of true effects (log-RR)
                                   V = c( 0.5^2, 0.2^2, 0.1^2 ),  # variance of true effects
                                   muN = NA, # just a placeholder; to be filled in later
                                   minN = c(100, 800),
                                   sd.w = 1,
                                   tail = "above",
-                                  true.effect.dist = c("unif2", "t.scaled"), # # "expo", "normal", "unif2", "t.scaled"
+                                  true.effect.dist = c("unif2", "expo", "t.scaled", "normal"), # # "expo", "normal", "unif2", "t.scaled"
                                   TheoryP = c(0.05, 0.1, 0.2, 0.5),
-                                  start.at = 241 ) )
+                                  start.at = 481 ) )
 ( n.scen = nrow(scen.params) )
 # look at it
 head( as.data.frame(scen.params) )
@@ -86,11 +86,11 @@ sbatch_params <- data.frame(jobname,
 
 n.files
 
-#24,000 jobs
+#48,000 jobs
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 22872:24000) {
+for (i in 40000:48000) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   system( paste("sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   Sys.sleep(2)  # delay in seconds
@@ -114,6 +114,6 @@ missed.nums = sbatch_not_run( "/home/groups/manishad/RRR/sim_results/long",
 
 
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in missed.nums) {
+for (i in missed.nums[1:10000]) {
   system( paste("sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
 }

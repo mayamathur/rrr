@@ -6,6 +6,7 @@
 cd /home/groups/manishad/RRR/sbatch_files
 
 sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
+sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/stitch.sbatch
 
 # check on my running or pending jobs
 squeue -u mmathur -o%T -ST | uniq -c
@@ -58,7 +59,7 @@ scp -r mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR/sbatch_file
 # run one of them on Manisha's nodes
 sbatch -p manishad /home/groups/manishad/RRR/sbatch_files/1.sbatch
 # not on Manisha's nodes
-sbatch -p normal,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
+sbatch -p qsu,normal,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
 
 
 
@@ -86,6 +87,9 @@ zip -r long.zip long
 scp mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR/sim_results/short.zip ~/Desktop
 scp mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR/sim_results/long.zip ~/Desktop
 
+# look at one results file
+cd /home/groups/manishad/RRR/sim_results/long
+nano long_results_job_1_.csv
 
 ####################### CLEAN UP ####################### 
 

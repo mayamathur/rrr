@@ -185,6 +185,10 @@ write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
 # global parameters for all scenarios
 CI.level = 0.95
 
+# which methods should we run?
+# it always runs parametric 
+# should list all of them unless we're re-running an existing scenario with a new method
+#methods.to.run = c("Boot", "NP ensemble", "NP sign test")
 methods.to.run = c("NP ensemble", "NP sign test")
 
 # if running NP sign test, should we bootstrap inference as well?
@@ -367,7 +371,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     #write.csv("nothing", "flag1.csv")
     # this method has the additional option to compute only the point estimate
     #  but not bootstrap a CI
-    
+    Note = NA
     if ("NP ensemble" %in% methods.to.run) {
       ens = my_ens( yi = d$yi, 
                     sei = sqrt(d$vyi) )
@@ -397,11 +401,13 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
         }, error = function(err){
           boot.lo.ens <<- NA
           boot.hi.ens <<- NA
+          Note <<- err$message
         })
         
       } else {
         boot.lo.ens = NA
         boot.hi.ens = NA
+        Note = NA
       }
       
       # NP ensemble
@@ -427,7 +433,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                       
                       Width = boot.hi.ens - boot.lo.ens,
                       
-                      Note = NA)
+                      Note = Note)
     }
    
 

@@ -18,27 +18,37 @@ simulate.dist.from.scratch = FALSE
 
 #################### READ IN DATA ####################
 
-# current results (unif2 and t)
-# ~~~ replace with the file called "stitched_unif_t"
+# TO USE JUST DESKTOP RESULTS
 setwd("~/Desktop")
 library(data.table)
-s1 = fread("stitched.csv")
-s1 = s1[-1,-1]
-head(s1)
+s = fread("stitched.csv")
+s = s[-1,-1]
+head(s)
 
-# previous results (expo and normal)
-setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation results/2019-8-20 normal and expo")
-s2 = fread("stitched_expo_normal.csv")
-# fix stupid names situation
-names(s2) = as.character(s2[1,])
-s2 = s2[-1,-1]
+s = as.data.frame(s)
 
-s1 = as.data.frame(s1)
-s2 = as.data.frame(s2)
-
-s = rbind(s1, s2)
-dim(s)
-
+# # TO MERGE RESULTS
+# # current results (unif2 and t)
+# # ~~~ replace with the file called "stitched_unif_t"
+# setwd("~/Desktop")
+# library(data.table)
+# s1 = fread("stitched.csv")
+# s1 = s1[-1,-1]
+# head(s1)
+# 
+# # previous results (expo and normal)
+# setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation results/2019-8-20 normal and expo")
+# s2 = fread("stitched_expo_normal.csv")
+# # fix stupid names situation
+# names(s2) = as.character(s2[1,])
+# s2 = s2[-1,-1]
+# 
+# s1 = as.data.frame(s1)
+# s2 = as.data.frame(s2)
+# 
+# s = rbind(s1, s2)
+# dim(s)
+# # END OF PART FOR MERGING RESULTS
 
 # how close are we to being done?
 View( s %>% group_by(scen.name) %>% summarise(reps = n()/4) )
@@ -68,22 +78,12 @@ s = s %>% group_by(scen.name) %>%
   mutate( sim.reps = n()/4 )
 
 
-# temp only - check one scenario
-temp = s %>% filter( k == 50 & V == 0.25 & minN == 100 & true.effect.dist == "unif2" & TheoryP == .2)
-temp %>% group_by(Method) %>%
-  filter(!is.na(Cover)) %>%
-  summarise(Cover = mean(Cover), n())
-# only 40 data points
-
-
-
 # sanity check for data generation: TheoryP and TruthP should be close
 # keep close eye on tau^2 = 0.01 scenarios because we 
 #  reject samples with tau = 0 estimate
 # minimal bias in these scenarios :) 
 s %>% group_by(V, TheoryP) %>%
   summarise( TruthP = mean(TruthP) )
-
 
 
 #################### DATA WRANGLING ####################
@@ -115,7 +115,7 @@ s$plot.panel = paste( expression(tau^2), " = ", s$V,
 res.all = s %>%
   group_by(scen.name, Method, true.effect.dist) %>%
   mutate(EmpVar = var(phat)) %>%
-  summarise_if( is.numeric, function(x) mean(x) )
+  summarise_if( is.numeric, function(x) mean(x, na.rm = TRUE) )
 
 
 res.all = res.all[ !is.na(res.all$Method), ]
