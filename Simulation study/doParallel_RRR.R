@@ -3,117 +3,150 @@
 
 # note: 2019-8-26_stitched_cumulative.csv has all 4 distributions
 
-######### FOR CLUSTER USE #########
+# are we running locally?
+local = TRUE
 
-# because Sherlock 2.0 restores previous workspace
-rm( list = ls() )
-
-# load command line arguments
-args = commandArgs(trailingOnly = TRUE)
-jobname = args[1]
-scen = args[2]  # this will be a letter
-
-# get scen parameters
-setwd("/home/groups/manishad/RRR")
-scen.params = read.csv( "scen_params.csv" )
-p = scen.params[ scen.params$scen.name == scen, ]
-
-print(p)
-
-
-# simulation reps to run within this job
-# this need to match n.reps.in.doParallel in the genSbatch script
-# sim.reps = 2
-# boot.reps = 100
-
-# # real versions
-sim.reps = 5
-# was 10,000 in MAM paper
-boot.reps = 5000
-
-
-
-# EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
-library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
-
-
-# for use in ml load R
-# install.packages( c("metRology"), lib = "/home/groups/manishad/Rpackages/" )
-
-path = "/home/groups/manishad/RRR"
-setwd(path)
-source("functions_RRR.R")
-
-# set the number of cores
-registerDoParallel(cores=16)
-######### END OF CLUSTER PART #########
-
-
-# ######### FOR LOCAL USE #########
-# 
-# rm(list=ls())
-# 
-# # helper fns
-# setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
-# source("functions_RRR.R")
-# 
-# # isolate a bad scenario
-# # row 1, upper panel #3
-# ( scen.params = make_scen_params( k = c(50),
-#                              mu = 0.5,  # mean of true effects (log-RR)
-#                              V = c( 0.04 ),  # variance of true effects
-#                              muN = NA, # just a placeholder; to be filled in later
-#                              minN = c( 100 ),
-#                              sd.w = 1,
-#                              tail = "above",
-#                              true.effect.dist = "unif2", # "expo", "normal", or "unif2"
-#                              TheoryP = c(0.05) ) )
-# n.scen = nrow(scen.params)
-# 
-# 
-# # sim.reps = 500  # reps to run in this iterate; leave this alone!
-# # boot.reps = 1000
-# sim.reps = 2
-# boot.reps = 50
-# 
-# 
-# library(foreach)
-# library(doParallel)
-# library(dplyr)
-# library(boot)
-# library(purrr)
-# 
-# 
-# # # ~~~ DEBUGGING: FOR CLUSTER
-# # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-# # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-# # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-# # setwd("/home/groups/manishad/RRR")
-# # source("functions_RRR.R")
-# 
-# # set the number of cores
-# registerDoParallel(cores=16)
-# 
-# 
-# scen = 1
-# 
-# ######### END OF LOCAL PART #########
+######################################## FOR CLUSTER USE ######################################## 
+if (local == FALSE) {
+  # because Sherlock 2.0 restores previous workspace
+  rm( list = ls() )
+  
+  # load command line arguments
+  args = commandArgs(trailingOnly = TRUE)
+  jobname = args[1]
+  scen = args[2]  # this will be a letter
+  
+  # get scen parameters
+  setwd("/home/groups/manishad/RRR")
+  scen.params = read.csv( "scen_params.csv" )
+  p = scen.params[ scen.params$scen.name == scen, ]
+  
+  print(p)
+  
+  
+  # simulation reps to run within this job
+  # this need to match n.reps.in.doParallel in the genSbatch script
+  # sim.reps = 2
+  # boot.reps = 100
+  
+  # # real versions
+  sim.reps = 5
+  # was 10,000 in MAM paper
+  boot.reps = 5000
+  
+  
+  # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+  library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
+  library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
+  
+  
+  # for use in ml load R
+  # install.packages( c("metRology"), lib = "/home/groups/manishad/Rpackages/" )
+  
+  path = "/home/groups/manishad/RRR"
+  setwd(path)
+  source("functions_RRR.R")
+  
+  # set the number of cores
+  registerDoParallel(cores=16)
+  
+  ##### Write Blank CSV File #####
+    # this records that the rep started in case there is a problem with the bootstrapping
+    placeholder = data.frame( TrueMean = NA,
+                              EstMean = NA,
+                              MeanCover = NA,
+                              
+                              TrueVar = NA,
+                              EstVar = NA,
+                              VarCover = NA,
+                              
+                              TheoryP = NA,  # from Normal quantiles given mu, V
+                              TruthP = NA,   # based on generated data
+                              phat = NA,  # our estimator
+                              phatBias = NA, # phat estimator vs. true proportion above
+                              
+                              Method = NA, 
+                              
+                              # CI performance
+                              Cover = NA,
+                              
+                              Width = NA, 
+                              
+                              Note = "Sim failure" )
+  
+  
+  placeholder$scen.name = scen
+  placeholder = merge( placeholder, scen.params )
+  
+  setwd("/home/groups/manishad/RRR/sim_results/long")
+  write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
+  # this will be overwritten if the rep finished successfully
+}
 
 
-########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION  ###########################
+
+######################################## FOR LOCAL USE ######################################## 
+if ( local == TRUE ) {
+  rm(list=ls())
+  
+  # helper fns
+  setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+  source("functions_RRR.R")
+  
+  # isolate a bad scenario
+  # row 1, upper panel #3
+  ( scen.params = make_scen_params( k = c(50),
+                                    mu = 0.5,  # mean of true effects (log-RR)
+                                    V = c( 0.04 ),  # variance of true effects
+                                    muN = NA, # just a placeholder; to be filled in later
+                                    minN = c( 100 ),
+                                    sd.w = 1,
+                                    tail = "above",
+                                    true.effect.dist = "unif2", # "expo", "normal", or "unif2"
+                                    TheoryP = c(0.05) ) )
+  n.scen = nrow(scen.params)
+  
+  
+  # sim.reps = 500  # reps to run in this iterate; leave this alone!
+  # boot.reps = 1000
+  sim.reps = 2
+  boot.reps = 50
+  
+  
+  library(foreach)
+  library(doParallel)
+  library(dplyr)
+  library(boot)
+  library(purrr)
+  
+  
+  # # ~~~ DEBUGGING: FOR CLUSTER
+  # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+  # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+  # setwd("/home/groups/manishad/RRR")
+  # source("functions_RRR.R")
+  
+  # set the number of cores
+  registerDoParallel(cores=16)
+  
+  scen = 1
+}
+
+
+########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION (LOCALLY) ###########################
 
 
 # j is the number of simulation iterations to run sequentially
@@ -144,42 +177,6 @@ registerDoParallel(cores=16)
 
 
 
-########################### WRITE BLANK CSV FILE  ###########################
-
-
-# this records that the rep started in case there is a problem with the bootstrapping
-placeholder = data.frame( TrueMean = NA,
-                          EstMean = NA,
-                          MeanCover = NA,
-                          
-                          TrueVar = NA,
-                          EstVar = NA,
-                          VarCover = NA,
-                          
-                          TheoryP = NA,  # from Normal quantiles given mu, V
-                          TruthP = NA,   # based on generated data
-                          phat = NA,  # our estimator
-                          phatBias = NA, # phat estimator vs. true proportion above
-                          
-                          Method = NA, 
-                          
-                          # CI performance
-                          Cover = NA,
-                          
-                          Width = NA, 
-                          
-                          Note = "Sim failure" )
-
-
-placeholder$scen.name = scen
-placeholder = merge( placeholder, scen.params )
-
-setwd("/home/groups/manishad/RRR/sim_results/long")
-write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
-# this will be overwritten if the rep finished successfully
-
-
-
 ########################### RUN THE ACTUAL SIMULATION ###########################
 
 # global parameters for all scenarios
@@ -189,7 +186,7 @@ CI.level = 0.95
 # it always runs parametric 
 # should list all of them unless we're re-running an existing scenario with a new method
 #methods.to.run = c("Boot", "NP ensemble", "NP sign test")
-methods.to.run = c("NP ensemble", "NP sign test")
+methods.to.run = c("NP ensemble")
 
 # if running NP sign test, should we bootstrap inference as well?
 boot.ens = TRUE  
@@ -454,29 +451,22 @@ head(rs)
 # time in seconds
 rep.time
 
-# # ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
-# # see results
-# rs %>% group_by(Method) %>%
-#   summarise(coverage = mean(Cover, na.rm=TRUE),
-#             prop.na = mean(is.na(Cover)),
-#             n())
-# 
-# rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
-# rs %>% group_by(Method) %>% summarise(phat = mean(phat, na.rm=TRUE))
-#  # bias
+if ( local == TRUE ) {
+  # ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
+  # see results
+  rs %>% group_by(Method) %>%
+    summarise(coverage = mean(Cover, na.rm=TRUE),
+              prop.na = mean(is.na(Cover)),
+              n())
 
-
+  rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
+  rs %>% group_by(Method) %>% summarise(phat = mean(phat, na.rm=TRUE))
+   # bias
+}
 
 
 ########################### WRITE LONG RESULTS  ###########################
-setwd("/home/groups/manishad/RRR/sim_results/long")
-write.csv( rs, paste( "long_results", jobname, ".csv", sep="_" ) )
-
-
-# ########################### WRITE SHORT RESULTS ###########################
-# # keep only 1 row per simulation rep
-# keep.row = rep( c( TRUE, rep(FALSE, boot.reps - 1) ), sim.reps )
-# 
-# setwd("/home/groups/manishad/multTest/sim_results/short")
-# write.csv( results[ keep.row, ], paste( "short_results", jobname, ".csv", sep="_" ) )
-
+if ( local == FALSE ) {
+  setwd("/home/groups/manishad/RRR/sim_results/long")
+  write.csv( rs, paste( "long_results", jobname, ".csv", sep="_" ) )
+}

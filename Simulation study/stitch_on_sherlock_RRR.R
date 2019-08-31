@@ -14,7 +14,9 @@ s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/
                  .stitch.file.name="stitched.csv")
 
 
-
+# stitch on Sherlock
+# sbatch -p qsu,normal,owners /home/groups/manishad/RRR/stitch.sbatch
+# sacct --jobs=49413895 --format=User,JobID,account,Timelimit,elapsed,ReqMem,MaxRss,ExitCode
 
 # # move it to Desktop
 # scp mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR/sim_results/overall_stitched/stitched.csv ~/Desktop
@@ -22,34 +24,34 @@ s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/
 # 
 # ######## SNEAK PEEK AT RESULTS ########
 # 
-library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-library(fansi, lib.loc = "/home/groups/manishad/Rpackages/")
-library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-library(utf8, lib.loc = "/home/groups/manishad/Rpackages/")
-library(cli, lib.loc = "/home/groups/manishad/Rpackages/")
-
-# proportion of successful reps (no note)
-s %>% group_by(scen.name) %>%
-  summarise( mean( is.na(Note) ),
-             n()/4 )
-
-
-( agg = s %>% filter( !is.na(Method)) %>%
-  group_by(scen.name, Method, true.effect.dist, TheoryP, k) %>%
-  summarise( TruthP = mean(TruthP, na.rm=TRUE),
-    cover = mean(Cover, na.rm=TRUE),
-             phat = mean(phat, na.rm = TRUE),
-             width = mean(Width, na.rm = TRUE),
-             n = n()/4) )
-
-# look just at ensemble-bt
-agg %>% filter(Method == "NP ensemble") %>%
-  summarise( 
-             min.cover = min(cover, na.rm=TRUE) )
-  
-
-# for viewing pleasure
-as.data.frame(agg)
+# library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(fansi, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(utf8, lib.loc = "/home/groups/manishad/Rpackages/")
+# library(cli, lib.loc = "/home/groups/manishad/Rpackages/")
+# 
+# # proportion of successful reps (no note)
+# s %>% group_by(scen.name) %>%
+#   summarise( mean( is.na(Note) ),
+#              n()/4 )
+# 
+# 
+# ( agg = s %>% filter( !is.na(Method)) %>%
+#   group_by(scen.name, Method, true.effect.dist, TheoryP, k) %>%
+#   summarise( TruthP = mean(TruthP, na.rm=TRUE),
+#     cover = mean(Cover, na.rm=TRUE),
+#              phat = mean(phat, na.rm = TRUE),
+#              width = mean(Width, na.rm = TRUE),
+#              n = n()/4) )
+# 
+# # look just at ensemble-bt
+# agg %>% filter(Method == "NP ensemble") %>%
+#   summarise( 
+#              min.cover = min(cover, na.rm=TRUE) )
+#   
+# 
+# # for viewing pleasure
+# as.data.frame(agg)
 
 # 
 # 

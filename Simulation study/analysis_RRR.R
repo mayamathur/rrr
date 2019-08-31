@@ -24,6 +24,7 @@ library(data.table)
 s = fread("stitched.csv")
 s = s[-1,-1]
 head(s)
+dim(s)
 
 s = as.data.frame(s)
 
@@ -76,6 +77,10 @@ s = s %>%
 #  not including sim failures
 s = s %>% group_by(scen.name) %>%
   mutate( sim.reps = n()/4 )
+
+# ~~ temporarily avoid looking at small scenarios while
+#  the results are running
+s = s[ s$sim.reps > 100, ]
 
 
 # sanity check for data generation: TheoryP and TruthP should be close

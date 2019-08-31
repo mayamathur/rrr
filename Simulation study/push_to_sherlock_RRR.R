@@ -1,5 +1,6 @@
 
-# expect 10*3 = 30 rows in long dataset
+# NOTE: BE CAREFUL ABOUT PUSHING ALL LOCAL FILES IF YOU HAVE SCEN_PARAMS.CSV LOCALLY! 
+#  IF SO, IT MIGHT OVERWRITE THE ONE ON SHERLOCK AND SCREW THINGS UP. 
 
 ####################### CHECK IN ####################### 
 # see the sbatches
@@ -16,6 +17,7 @@ squeue -u mmathur -o%T -ST | uniq -c
 cd /home/groups/manishad/RRR/sim_results/long
 nano long*
 ls -l . | egrep -c '^-'
+grep -l "long" * | wc -l
 
 # see the errors
 vim /home/groups/manishad/RRR/sbatch_files/slurm*
