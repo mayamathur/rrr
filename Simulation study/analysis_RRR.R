@@ -22,11 +22,11 @@ simulate.dist.from.scratch = FALSE
 setwd("~/Desktop")
 library(data.table)
 s = fread("stitched.csv")
-s = s[-1,-1]
-head(s)
-dim(s)
+names(s) = as.character(s[2,])
+s = as.data.frame(s[-c(1:2), -1])
+s$sim_group = 3  # identify which "group" of simulations this belongs to
+# fix stupid names situation
 
-s = as.data.frame(s)
 
 # # TO MERGE RESULTS
 # # current results (unif2 and t)
@@ -52,14 +52,18 @@ s = as.data.frame(s)
 # # END OF PART FOR MERGING RESULTS
 
 # how close are we to being done?
-View( s %>% group_by(scen.name) %>% summarise(reps = n()/4) )
+#reps.per.scen = s %>% group_by(scen.name) %>% summarise(reps = n()/2)
 
 # remove failed reps, etc.
+table( !is.na(s$scen.name) & !is.na(s$Method) & !is.na(s$TheoryP) )
 s = s %>% filter( !is.na(scen.name) & !is.na(Method) & !is.na(TheoryP))
 s = droplevels(s)
 
-# get rid of messed-up rows (e.g., has something wrong for scen.name)
-s = s %>% filter(!is.na(as.numeric(scen.name)) )
+# proportion of times the ensemble bootstrap failed
+boot.failures = s %>% filter(sim_group == 3) %>%  # only look at reps from last group; otherwise they wouldn't have attempted bootstrap
+  group_by(k, TheoryP) %>%
+  filter(Method == "NP ensemble") %>%
+  summarise( boot.problem = sum(!is.na(Note)) / length(Note) )
 
 
 # make sure variables are correct type
@@ -122,11 +126,14 @@ res.all = s %>%
   mutate(EmpVar = var(phat)) %>%
   summarise_if( is.numeric, function(x) mean(x, na.rm = TRUE) )
 
-
 res.all = res.all[ !is.na(res.all$Method), ]
 
+# ~~~ BM
 # MSE of Phat
-res.all$phatMSE = res.all$phatBias^2 + res.all$EmpVar
+res.all$RMSE = sqrt( res.all$phatBias^2 + res.all$EmpVar )
+
+res.all %>% group_by(scen.name) %>%
+  mutate( RMSE.parametric = RMSE[Method == "Parametric"] )
 
 # for plotting joy
 res.all$muN.pretty = paste( "E[N] = ", res.all$muN )
@@ -260,9 +267,9 @@ View(agg.win)
 # bm 
 ##### Inference #####
 # filter out the levels of heterogeneity for which we don't recommend our methods
-inf.table = res.all %>% filter(V > 0.04) %>%
-  filter(Method != "NP ensemble") %>%  # this method doesn't give inference
-  group_by(true.effect.dist, Method) %>%
+inf.table = res.all %>%
+  filter(k > 5) %>%
+  group_by(Method, true.effect.dist) %>%
   summarise( Mean.Cover = mean(Cover, na.rm = TRUE),
              Min.Cover = min(Cover, na.rm = TRUE),
              #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
@@ -273,30 +280,22 @@ inf.table = res.all %>% filter(V > 0.04) %>%
 View(inf.table)
 
 
-# find scenarios where NP sign test does fine
-View( res.all %>% filter(V > 0.04) %>%
-  filter(Method == "NP sign test") %>%  # this method doesn't give inference
-  group_by(true.effect.dist, Method) %>%
-  summarise( Mean.Cover = mean(Cover, na.rm = TRUE),
-             Min.Cover = min(Cover, na.rm = TRUE),
-             #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
-             Cover.Above.90 = sum(Cover>.9)/length(Cover),
-             
-             Width = mean(Width, na.rm = TRUE) ) )
-
 ##### Point Estimates #####
 # filter out the levels of heterogeneity for which we don't recommend our methods
-( est.table = res.all %>% filter(V > 0.04) %>%
-    group_by(true.effect.dist, Method) %>%
+( est.table = res.all %>%
+    
+    #filter(V > 0.04) %>%
+    group_by(Method, true.effect.dist) %>%
     summarise( Mean.Abs.Bias = mean( abs(phatBias) ),
                Max.Abs.Bias = max( abs(phatBias) ),
                
                # Mean.Rel.Bias = max( abs(phatBias) / TheoryP ),
                # Max.Rel.Bias = mean( abs(phatBias) / TheoryP ),
                
-               Mean.MSE = mean(phatMSE),
-               Max.MSE = max(phatMSE) ) )
+               Mean.RMSE = mean(sqrt(phatMSE)),
+               Max.RMSE = max(sqrt(phatMSE)) ) )
 
+est.table$Mean.RMSE.Rel = est.table$Mean.RMSE / 
 View(est.table)
 
 
@@ -333,7 +332,13 @@ if ( simulate.dist.from.scratch == TRUE ) {
 } else {
   setwd(results.dist.dir)
   sims = read.csv("simulated_density_data.csv")
+  
+  # we had simulated extra values of V, but then decided against actually simulating them
+  # remove those
+  sims = sims %>% filter( sims$V %in% c(0.01, 0.04, 0.25))
 }
+
+# remove the 
 
 
 # for plotting joy

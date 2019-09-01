@@ -10,7 +10,7 @@
     #SBATCH --error=rm_stitch.err
     #################
     #time you think you need; default is one hour
-    #SBATCH --time=1:00:00
+    #SBATCH --time=2:00:00
     #################
     #quality of service; think of it as job priority
     #SBATCH --qos=normal
@@ -38,4 +38,4 @@
     #now run normal batch commands
 
     ml load R
-    srun R -f /home/groups/manishad/RRR/stitch_on_sherlock_RRR.R
+    srun R -f /home/groups/manishad/RRR/stitch_on_sherlock_RRR.R --args 24001 36000

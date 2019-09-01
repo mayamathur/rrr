@@ -4,10 +4,11 @@
 # note: 2019-8-26_stitched_cumulative.csv has all 4 distributions
 
 # are we running locally?
-local = TRUE
+# DOESN'T WORK!
+local = FALSE
 
 ######################################## FOR CLUSTER USE ######################################## 
-if (local == FALSE) {
+#if (local == FALSE) {
   # because Sherlock 2.0 restores previous workspace
   rm( list = ls() )
   
@@ -88,63 +89,63 @@ if (local == FALSE) {
   setwd("/home/groups/manishad/RRR/sim_results/long")
   write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
   # this will be overwritten if the rep finished successfully
-}
+#}
 
 
 
-######################################## FOR LOCAL USE ######################################## 
-if ( local == TRUE ) {
-  rm(list=ls())
-  
-  # helper fns
-  setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
-  source("functions_RRR.R")
-  
-  # isolate a bad scenario
-  # row 1, upper panel #3
-  ( scen.params = make_scen_params( k = c(50),
-                                    mu = 0.5,  # mean of true effects (log-RR)
-                                    V = c( 0.04 ),  # variance of true effects
-                                    muN = NA, # just a placeholder; to be filled in later
-                                    minN = c( 100 ),
-                                    sd.w = 1,
-                                    tail = "above",
-                                    true.effect.dist = "unif2", # "expo", "normal", or "unif2"
-                                    TheoryP = c(0.05) ) )
-  n.scen = nrow(scen.params)
-  
-  
-  # sim.reps = 500  # reps to run in this iterate; leave this alone!
-  # boot.reps = 1000
-  sim.reps = 2
-  boot.reps = 50
-  
-  
-  library(foreach)
-  library(doParallel)
-  library(dplyr)
-  library(boot)
-  library(purrr)
-  
-  
-  # # ~~~ DEBUGGING: FOR CLUSTER
-  # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-  # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-  # setwd("/home/groups/manishad/RRR")
-  # source("functions_RRR.R")
-  
-  # set the number of cores
-  registerDoParallel(cores=16)
-  
-  scen = 1
-}
-
+# ######################################## FOR LOCAL USE ######################################## 
+# if ( local == TRUE ) {
+#   rm(list=ls())
+#   
+#   # helper fns
+#   setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+#   source("functions_RRR.R")
+#   
+#   # isolate a bad scenario
+#   # row 1, upper panel #3
+#   ( scen.params = make_scen_params( k = c(50),
+#                                     mu = 0.5,  # mean of true effects (log-RR)
+#                                     V = c( 0.04 ),  # variance of true effects
+#                                     muN = NA, # just a placeholder; to be filled in later
+#                                     minN = c( 100 ),
+#                                     sd.w = 1,
+#                                     tail = "above",
+#                                     true.effect.dist = "unif2", # "expo", "normal", or "unif2"
+#                                     TheoryP = c(0.05) ) )
+#   n.scen = nrow(scen.params)
+#   
+#   
+#   # sim.reps = 500  # reps to run in this iterate; leave this alone!
+#   # boot.reps = 1000
+#   sim.reps = 2
+#   boot.reps = 50
+#   
+#   
+#   library(foreach)
+#   library(doParallel)
+#   library(dplyr)
+#   library(boot)
+#   library(purrr)
+#   
+#   
+#   # # ~~~ DEBUGGING: FOR CLUSTER
+#   # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+#   # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # setwd("/home/groups/manishad/RRR")
+#   # source("functions_RRR.R")
+#   
+#   # set the number of cores
+#   registerDoParallel(cores=16)
+#   
+#   scen = 1
+# }
+# 
 
 ########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION (LOCALLY) ###########################
 
@@ -451,22 +452,22 @@ head(rs)
 # time in seconds
 rep.time
 
-if ( local == TRUE ) {
-  # ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
-  # see results
-  rs %>% group_by(Method) %>%
-    summarise(coverage = mean(Cover, na.rm=TRUE),
-              prop.na = mean(is.na(Cover)),
-              n())
-
-  rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
-  rs %>% group_by(Method) %>% summarise(phat = mean(phat, na.rm=TRUE))
-   # bias
-}
+# if ( local == TRUE ) {
+#   # ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER
+#   # see results
+#   rs %>% group_by(Method) %>%
+#     summarise(coverage = mean(Cover, na.rm=TRUE),
+#               prop.na = mean(is.na(Cover)),
+#               n())
+# 
+#   rs %>% group_by(Method) %>%summarise(width = mean(Width, na.rm=TRUE))
+#   rs %>% group_by(Method) %>% summarise(phat = mean(phat, na.rm=TRUE))
+#    # bias
+# }
 
 
 ########################### WRITE LONG RESULTS  ###########################
-if ( local == FALSE ) {
+#if ( local == FALSE ) {
   setwd("/home/groups/manishad/RRR/sim_results/long")
   write.csv( rs, paste( "long_results", jobname, ".csv", sep="_" ) )
-}
+#}

@@ -3,6 +3,8 @@
 # the fn for computing the estimators themselves are in stronger_than_function.R
 #  since users will want those
 
+# 4:30 pm
+
 ########################### FN: ENSEMBLE ESTIMATES ###########################
 
 # my calculation of ensemble estimates
@@ -634,8 +636,12 @@ prop_stronger_np = function(q,
 #   written by separate workers in parallel, stitch results files together into a
 #   single csv.
 
-stitch_files = function(.results.singles.path, .results.stitched.write.path=.results.singles.path,
-                        .name.prefix, .stitch.file.name="stitched_model_fit_results.csv") {
+stitch_files = function(.results.singles.path,
+                        .results.stitched.write.path=.results.singles.path,
+                        .name.prefix,
+                        .stitch.file.name="stitched_model_fit_results.csv",
+                        .start.num = 1,
+                        .stop.num = NA) {
   
   # .results.singles.path = "/home/groups/manishad/RRR/sim_results/long"
   # .results.stitched.write.path = "/home/groups/manishad/RRR/sim_results/overall_stitched"
@@ -648,6 +654,15 @@ stitch_files = function(.results.singles.path, .results.stitched.write.path=.res
   # we only want the ones whose name includes .name.prefix
   keepers = all.files[ grep( .name.prefix, all.files ) ]
   
+  # make sure stop num isn't longer than keepers
+  .stop.num = min(.stop.num, length(keepers))
+  
+  # if limiting the number of files to stitch to keep job 
+  #  size manageable
+  if (!is.na(.stop.num)) {
+    keepers = keepers[ .start.num : .stop.num ]
+  }
+  
   # # grab variable names from first file
   # names = names( read.csv(keepers[1] )[-1] )
   
@@ -658,7 +673,15 @@ stitch_files = function(.results.singles.path, .results.stitched.write.path=.res
   s = s[ , names(s) != "V1" ]
 
   if( is.na(s[1,1]) ) s = s[-1,]  # delete annoying NA row
-  write.csv(s, paste(.results.stitched.write.path, .stitch.file.name, sep="/") )
+  
+  if (is.na(.stop.num)) {
+    write.csv(s, paste(.results.stitched.write.path, .stitch.file.name, sep="/") )
+  } else {
+    # if breaking up the task, use a unique name to avoid overwriting
+    name = paste(.stop.num, .stitch.file.name, sep="_")
+    write.csv(s, paste(.results.stitched.write.path, name, sep="/") )
+  }
+
   return(s)
 }
 
@@ -769,58 +792,9 @@ prop_stronger = function( q,
 }
 
 
-
-########################### FN: STITCH RESULTS FILES ###########################
-
-# Given a folder path for results and a common beginning of file name of results files
-#   written by separate workers in parallel, stitch results files together into a
-#   single csv.
-
-# Arguments: 
-#  .results.singles.path: Path of unstitched single results files
-#  .results.stitched.write.path: Path to which stitched data should be written
-#  .name.prefix: String contained anywhere in name of each single results files, but
-#   not in name of any other random files at .results.singles.path
-#  .stitch.file.name: What to call the stitched file
-
-stitch_files = function(.results.singles.path,
-                        .results.stitched.write.path = .results.singles.path,
-                        .name.prefix,
-                        .stitch.file.name="stitched_model_fit_results.csv") {
-  
-  # get list of all files in folder
-  all.files = list.files(.results.singles.path, full.names=TRUE)
-  
-  # we only want the ones whose name includes .name.prefix
-  keepers = all.files[ grep( .name.prefix, all.files ) ]
-  
-  # grab variable names from first file
-  names = names( read.csv(keepers[1] )[-1] )
-  
-  # initialize stitched dataframe
-  s = as.data.frame( matrix(nrow=1, ncol=length(names)) )
-  names(s) = names
-  
-  # stitch the files
-  for ( i in 1:length(keepers) ) {
-    new.chunk = try( read.csv(keepers[i])[,-1] )
-    if ( inherits(new.chunk, 'try-error') ) warning( paste( keepers[i], "has a problem!") )
-    s = rbind(s, new.chunk)
-  }
-  
-  
-  #s = s[-1,]  # delete annoying NA row
-  write.csv(s, paste(.results.stitched.write.path, .stitch.file.name, sep="/") )
-  return(s)
-}
-
-
 ########################### FN: RETURN FILES THAT AREN'T COMPLETED ###########################
 
-# Given a folder path for results and a common beginning of file name of results files
-#   written by separate workers in parallel, stitch results files together into a
-#   single csv.
-
+# looks at results files to identify sbatches that didn't write a file
 # .max.sbatch.num: If not passed, defaults to largest number in actually run jobs.
 
 sbatch_not_run = function(.results.singles.path,

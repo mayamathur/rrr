@@ -34,7 +34,7 @@ nano /home/groups/manishad/RRR/sim_results/overall_stitched/sti*
 ####################### CODE -> SHERLOCK ####################### 
 
 # push all the individual files
-scp /Users/mmathur/Dropbox/Personal\ computer/Independent\ studies/RRR\ estimators/Linked\ to\ OSF\ \(RRR\)/Other\ RRR\ code\ \(git\)/Simulation\ study/* mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR
+scp -r /Users/mmathur/Dropbox/Personal\ computer/Independent\ studies/RRR\ estimators/Linked\ to\ OSF\ \(RRR\)/Other\ RRR\ code\ \(git\)/Simulation\ study/* mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR
 sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
 
 # stitching sbatch and R
