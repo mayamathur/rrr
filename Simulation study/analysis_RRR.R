@@ -18,34 +18,39 @@ simulate.dist.from.scratch = FALSE
 
 #################### READ IN DATA ####################
 
-# TO USE JUST DESKTOP RESULTS
-#setwd("~/Desktop")
-library(data.table)
-setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation results/2019-9-1 last two sets combined/Stitched data")
-s1 = fread("stitched_expo_normal.csv")
-names(s1) = as.character(s1[1,])
-s1 = as.data.frame(s1[-c(1), -1])
-s1$sim_group = 1  # identify which "group" of simulations this belongs to
 
-s2 = fread("stitched_unif_t.csv")
-#names(s2) = as.character(s2[1,])
-s2 = as.data.frame(s2[-c(1), -1])
-s2$sim_group = 2  # identify which "group" of simulations this belongs to
+if (merge.from.scratch == TRUE) {
+  # TO USE JUST DESKTOP RESULTS
+  #setwd("~/Desktop")
+  library(data.table)
+  setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation results/2019-9-1 last two sets combined/Stitched data")
+  s1 = fread("stitched_expo_normal.csv")
+  names(s1) = as.character(s1[1,])
+  s1 = as.data.frame(s1[-c(1), -1])
+  s1$sim_group = 1  # identify which "group" of simulations this belongs to
+  
+  s2 = fread("stitched_unif_t.csv")
+  #names(s2) = as.character(s2[1,])
+  s2 = as.data.frame(s2[-c(1), -1])
+  s2$sim_group = 2  # identify which "group" of simulations this belongs to
+  
+  
+  s3 = fread("stitched_all4_ensemble.csv")
+  names(s3) = as.character(s3[2,])
+  s3 = as.data.frame(s3[-c(1:2), -1])
+  s3$sim_group = 3  # identify which "group" of simulations this belongs to
+  # fix stupid names situation
+  
+  s = rbind(s1, s2, s3)
+  # write.csv(s,
+  #           "overall_stitched.csv",
+  #           row.names = FALSE)
+}
 
-
-s3 = fread("stitched_all4_ensemble.csv")
-names(s3) = as.character(s3[2,])
-s3 = as.data.frame(s3[-c(1:2), -1])
-s3$sim_group = 3  # identify which "group" of simulations this belongs to
-# fix stupid names situation
-
-s = rbind(s1, s2, s3)
-# write.csv(s,
-#           "overall_stitched.csv",
-#           row.names = FALSE)
 
 # read in existing data
 s = as.data.frame( fread("overall_stitched.csv") )
+
 
 #################### DATA CLEANING AND QUALITY CHECKS ####################
 

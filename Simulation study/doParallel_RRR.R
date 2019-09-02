@@ -31,7 +31,7 @@ local = FALSE
   # boot.reps = 100
   
   # # real versions
-  sim.reps = 5
+  sim.reps = 10
   # was 10,000 in MAM paper
   boot.reps = 5000
   
@@ -46,7 +46,7 @@ local = FALSE
   library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
   library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
   library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
-  
+  library(fansi, lib.loc = "/home/groups/manishad/Rpackages/")
   
   # for use in ml load R
   # install.packages( c("metRology"), lib = "/home/groups/manishad/Rpackages/" )
@@ -80,11 +80,12 @@ local = FALSE
                               
                               Width = NA, 
                               
-                              Note = "Sim failure" )
+                              Note = "Sim failure",
+                              rep.time = NA)
   
   
   placeholder$scen.name = scen
-  placeholder = merge( placeholder, scen.params )
+  placeholder = merge( placeholder, scen.params, by = "scen.name" )
   
   setwd("/home/groups/manishad/RRR/sim_results/long")
   write.csv( placeholder, paste( "long_results", jobname, ".csv", sep="_" ) )
@@ -93,58 +94,58 @@ local = FALSE
 
 
 
-# ######################################## FOR LOCAL USE ######################################## 
-if ( local == TRUE ) {
-  rm(list=ls())
-
-  # helper fns
-  setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
-  source("functions_RRR.R")
-
-  # isolate a bad scenario
-  # row 1, upper panel #3
-  ( scen.params = make_scen_params( k = c(5),
-                                    mu = 0.5,  # mean of true effects (log-RR)
-                                    V = c( 0.01 ),  # variance of true effects
-                                    muN = NA, # just a placeholder; to be filled in later
-                                    minN = c( 100 ),
-                                    sd.w = 1,
-                                    tail = "above",
-                                    true.effect.dist = "unif2", # "expo", "normal", or "unif2"
-                                    TheoryP = c(0.05) ) )
-  n.scen = nrow(scen.params)
-
-
-  # sim.reps = 500  # reps to run in this iterate; leave this alone!
-  # boot.reps = 1000
-  sim.reps = 2
-  boot.reps = 50
-
-
-  library(foreach)
-  library(doParallel)
-  library(dplyr)
-  library(boot)
-  library(purrr)
-
-
-  # # ~~~ DEBUGGING: FOR CLUSTER
-  # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-  # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-  # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-  # setwd("/home/groups/manishad/RRR")
-  # source("functions_RRR.R")
-
-  # set the number of cores
-  registerDoParallel(cores=16)
-
-  scen = 1
-}
+# ######################################## FOR LOCAL USE ########################################
+# if ( local == TRUE ) {
+#   rm(list=ls())
+# 
+#   # helper fns
+#   setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+#   source("functions_RRR.R")
+# 
+#   # isolate a bad scenario
+#   ( scen.params = make_scen_params( k = c(20),
+#                                     mu = 0.5,  # mean of true effects (log-RR)
+#                                     V = c( 0.1^2 ),  # variance of true effects
+#                                     muN = NA, # just a placeholder; to be filled in later
+#                                     minN = c(100),
+#                                     sd.w = 1,
+#                                     tail = "above",
+#                                     true.effect.dist = c("t.scaled"), # # "expo", "normal", "unif2", "t.scaled"
+#                                     TheoryP = c(0.5),
+#                                     start.at = 1 ) )
+#   n.scen = nrow(scen.params)
+# 
+# 
+#   # sim.reps = 500  # reps to run in this iterate; leave this alone!
+#   # boot.reps = 1000
+#   sim.reps = 2
+#   boot.reps = 50
+# 
+# 
+#   library(foreach)
+#   library(doParallel)
+#   library(dplyr)
+#   library(boot)
+#   library(purrr)
+# 
+# 
+#   # # ~~~ DEBUGGING: FOR CLUSTER
+#   # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+#   # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+#   # setwd("/home/groups/manishad/RRR")
+#   # source("functions_RRR.R")
+# 
+#   # set the number of cores
+#   registerDoParallel(cores=16)
+# 
+#   scen = 1
+# }
 
 
 ########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION (LOCALLY) ###########################
@@ -187,7 +188,7 @@ CI.level = 0.95
 # it always runs parametric 
 # should list all of them unless we're re-running an existing scenario with a new method
 #methods.to.run = c("Boot", "NP ensemble", "NP sign test")
-methods.to.run = c("NP ensemble")
+methods.to.run = c("Boot", "NP sign test")
 
 # if running NP sign test, should we bootstrap inference as well?
 boot.ens = TRUE  
@@ -272,71 +273,95 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     
     ##### Bootstrap for Parametric #####
     if ( "Boot" %in% methods.to.run ) {
-      boot.res = boot( data = d, 
-                       parallel = "multicore",
-                       R = boot.reps, 
-                       statistic = function(original, indices) {
-                         
-                         b = original[indices,]
-                         
-                         mb = rma.uni( yi = b$yi,
-                                       vi = b$vyi,
-                                       measure="SMD",
-                                       knha = TRUE,
-                                       method = "REML")
-                         Mb = mb$b
-                         t2b = mb$tau2
-                         
-                         suppressWarnings( prop_stronger( q = p$q,
-                                                          M = Mb,
-                                                          t2 = t2b,
-                                                          CI.level = CI.level,
-                                                          tail = p$tail )$Est )
-                       }
-      )
       
-      #bootCIs = boot.ci(boot.res, type="perc")
-      bootCIs = boot.ci(boot.res, type="bca")
-      boot.lo = bootCIs$bca[4]
-      boot.hi = bootCIs$bca[5]
-      boot.median = median(boot.res$t)  # median Phat in bootstrap iterates
-      
-      # boot for parametric
-      rows = add_row( rows,
-                      TrueMean = p$mu,
-                      EstMean = M, 
-                      MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-                      
-                      TrueVar = p$V,
-                      EstVar = t2,
-                      VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
-                                         CIs$random["tau^2", "ci.ub"] ),
-                      
-                      #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
-                      TruthP = p.above,   # based on generated data
-                      phat = boot.median,  # note that this is the median of the bootstrap iterates
-                      phatBias = boot.median - p$TheoryP, 
-                      
-                      # method of calculating CI: exponentiate logit or not?
-                      Method = "Boot",
-                      
-                      # CI performance
-                      Cover = covers(p$TheoryP, boot.lo, boot.hi),
-                      
-                      Width = boot.hi - boot.lo,
-                      
-                      Note = NA)
-    }
+        Note = NA
+        tryCatch({
+        
+          boot.res = boot( data = d, 
+                           parallel = "multicore",
+                           R = boot.reps, 
+                           statistic = function(original, indices) {
+                             
+                             b = original[indices,]
+                             
+                             mb = rma.uni( yi = b$yi,
+                                           vi = b$vyi,
+                                           measure="SMD",
+                                           knha = TRUE,
+                                           method = "REML")
+                             Mb = mb$b
+                             t2b = mb$tau2
+                             
+                             suppressWarnings( prop_stronger( q = p$q,
+                                                              M = Mb,
+                                                              t2 = t2b,
+                                                              CI.level = CI.level,
+                                                              tail = p$tail )$Est )
+                           }
+          )
+          
+          #bootCIs = boot.ci(boot.res, type="perc")
+          bootCIs = boot.ci(boot.res, type="bca")
+          boot.lo = bootCIs$bca[4]
+          boot.hi = bootCIs$bca[5]
+          boot.median = median(boot.res$t)  # median Phat in bootstrap iterates
+          
+        }, error = function(err){
+          boot.lo <<- NA
+          boot.hi <<- NA
+          boot.median <<- NA
+          Note <<- paste("Regular boot failed: ", err$message, sep="")
+        } )
+        
+        # boot for parametric
+        rows = add_row( rows,
+                        TrueMean = p$mu,
+                        EstMean = M, 
+                        MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
+                        
+                        TrueVar = p$V,
+                        EstVar = t2,
+                        VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"],
+                                           CIs$random["tau^2", "ci.ub"] ),
+                        
+                        #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
+                        TruthP = p.above,   # based on generated data
+                        phat = boot.median,  # note that this is the median of the bootstrap iterates
+                        phatBias = boot.median - p$TheoryP, 
+                        
+                        # method of calculating CI: exponentiate logit or not?
+                        Method = "Boot",
+                        
+                        # CI performance
+                        Cover = covers(p$TheoryP, boot.lo, boot.hi),
+                        
+                        Width = boot.hi - boot.lo,
+                        
+                        Note = Note)
+      }  # end regular boot
+  
     
     ##### Nonparametric Sign Test (Rui Wang) #####
 
     if ("NP sign test" %in% methods.to.run) {
-      Phat.NP = prop_stronger_np( q = p$q,
-                                  yi = d$yi,
-                                  vi = d$vyi,
-                                  tail = "above",
-                                  R = 2000,
-                                  return.vectors = FALSE)
+      Note = NA
+      tryCatch({
+        Phat.NP = prop_stronger_np( q = p$q,
+                                    yi = d$yi,
+                                    vi = d$vyi,
+                                    tail = "above",
+                                    R = 2000,
+                                    return.vectors = FALSE)
+        Phat.NP.est = Phat.NP$Est
+        Phat.NP.lo = Phat.NP$lo
+        Phat.NP.hi = Phat.NP$hi
+        
+      }, error = function(err){
+        Phat.NP.est <<- NA
+        Phat.NP.lo <<- NA
+        Phat.NP.hi <<- NA
+        Note <<- paste("Sign test failed: ", err$message, sep="")
+      } )
       
       rows = add_row( rows,
                       TrueMean = p$mu,
@@ -349,27 +374,26 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                       
                       #TheoryP = p$TheoryP,  # from Normal quantiles given mu, V
                       TruthP = p.above,   # based on generated data
-                      phat = Phat.NP$Est,  # nonparametric estimator
-                      phatBias = Phat.NP$Est - p$TheoryP, # phat estimator vs. true proportion above
+                      phat = Phat.NP.est,  # nonparametric estimator
+                      phatBias = Phat.NP.est - p$TheoryP, # phat estimator vs. true proportion above
                       
                       # method of calculating CI: exponentiate logit or not?
                       Method = "NP sign test",
                       
                       # CI performance
-                      Cover = covers(p$TheoryP, Phat.NP$lo, Phat.NP$hi),
+                      Cover = covers(p$TheoryP, Phat.NP.lo, Phat.NP.hi),
                       
-                      Width = Phat.NP$hi - Phat.NP$lo,
+                      Width = Phat.NP.hi - Phat.NP.lo,
                       
-                      Note = NA)
-    }
-
+                      Note = Note)
+    }  # end NP sign test
   
 
     ##### Get Ensemble Phat and CI (Wang ensemble) #####
     #write.csv("nothing", "flag1.csv")
     # this method has the additional option to compute only the point estimate
     #  but not bootstrap a CI
-    Note = "BCa"
+    Note = NA
     if ("NP ensemble" %in% methods.to.run) {
       ens = my_ens( yi = d$yi, 
                     sei = sqrt(d$vyi) )
@@ -405,7 +429,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
           
           boot.lo.ens <<- NA
           boot.hi.ens <<- NA
-          Note <<- err$message
+          Note <<- paste("BCa-ens failed: ", err$message, sep="")
         })
         
       } else {
@@ -454,14 +478,15 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
 
 head(rs)
 
-rs %>% filter(Method == "NP ensemble") %>%
-group_by(Note) %>% 
-  summarise( cover = mean(Cover),
-             n = n() )
+# rs %>% filter(Method == "NP ensemble") %>%
+# group_by(Note) %>% 
+#   summarise( cover = mean(Cover),
+#              n = n() )
 
 
 # time in seconds
 rep.time
+rs$rep.time = rep.time
 
 # if ( local == TRUE ) {
 #   # ~~ COMMENT OUT BELOW PART TO RUN ON CLUSTER

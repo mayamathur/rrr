@@ -11,16 +11,14 @@ library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
 s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/long",
                  .results.stitched.write.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
                  .name.prefix = "long_results",
-                 .stitch.file.name="stitched.csv",
-                 .start.num = 47768,
-                 .stop.num = 48000 )
-
-
-# temp only - stitch the 4 stitched ones
-s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
-                 .results.stitched.write.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
-                 .name.prefix = "stitched",
                  .stitch.file.name="stitched.csv" )
+
+
+# # temp only - stitch the 4 stitched ones
+# s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
+#                  .results.stitched.write.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
+#                  .name.prefix = "stitched",
+#                  .stitch.file.name="stitched.csv" )
 
 
 # stitch on Sherlock

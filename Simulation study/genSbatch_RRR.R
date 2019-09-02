@@ -19,27 +19,28 @@ library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
 library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
 
 # full set of scenarios - from expo and normal runs
-# ( scen.params = make_scen_params( k = c(5, 10, 15, 20, 50),
+# ( scen.params = make_scen_params( k = rev(c(5, 10, 15, 20, 50)),
 #                                   mu = 0.5,  # mean of true effects (log-RR)
 #                                   V = c( 0.5^2, 0.2^2, 0.1^2 ),  # variance of true effects
 #                                   muN = NA, # just a placeholder; to be filled in later
 #                                   minN = c(100, 800),
 #                                   sd.w = 1,
 #                                   tail = "above",
-#                                   true.effect.dist = c("expo", "normal"), 
-#                                   TheoryP = c(0.05, 0.1, 0.2, 0.5) ) )
+#                                   true.effect.dist = c("unif2", "expo", "t.scaled", "normal"), # # "expo", "normal", "unif2", "t.scaled"
+#                                   TheoryP = c(0.05, 0.1, 0.2, 0.5),
+#                                   start.at = 1 ) )
 
-
-( scen.params = make_scen_params( k = rev(c(5, 10, 15, 20, 50)),
+( scen.params = make_scen_params( k = c(20),
                                   mu = 0.5,  # mean of true effects (log-RR)
-                                  V = c( 0.5^2, 0.2^2, 0.1^2 ),  # variance of true effects
+                                  V = c( 0.1^2 ),  # variance of true effects
                                   muN = NA, # just a placeholder; to be filled in later
-                                  minN = c(100, 800),
+                                  minN = c(100),
                                   sd.w = 1,
                                   tail = "above",
-                                  true.effect.dist = c("unif2", "expo", "t.scaled", "normal"), # # "expo", "normal", "unif2", "t.scaled"
-                                  TheoryP = c(0.05, 0.1, 0.2, 0.5),
-                                  start.at = 481 ) )
+                                  true.effect.dist = c("t.scaled"), # # "expo", "normal", "unif2", "t.scaled"
+                                  TheoryP = c(0.5),
+                                  start.at = 1 ) )
+
 ( n.scen = nrow(scen.params) )
 # look at it
 head( as.data.frame(scen.params) )
@@ -55,7 +56,7 @@ source("functions_RRR.R")
 
 # number of sbatches to generate (i.e., iterations within each scenario)
 n.reps.per.scen = 500
-n.reps.in.doParallel = 5
+n.reps.in.doParallel = 10
 ( n.files = ( n.reps.per.scen / n.reps.in.doParallel ) * n.scen )
 
 
@@ -85,7 +86,7 @@ sbatch_params <- data.frame(jobname,
                             stringsAsFactors = F,
                             server_sbatch_path = NA)
 
-#generateSbatch(sbatch_params, runfile_path)
+generateSbatch(sbatch_params, runfile_path)
 
 n.files
 
@@ -93,7 +94,7 @@ n.files
 # max hourly submissions seems to be 300, which is 12 seconds/job
 path = "/home/groups/manishad/RRR"
 setwd( paste(path, "/sbatch_files", sep="") )
-for (i in 42878:48000) {
+for (i in 1:1) {
   #system( paste("sbatch -p owners /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   system( paste("sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
   #Sys.sleep(2)  # delay in seconds
