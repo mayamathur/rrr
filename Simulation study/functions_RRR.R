@@ -3,7 +3,6 @@
 # the fn for computing the estimators themselves are in stronger_than_function.R
 #  since users will want those
 
-# 4:30 pm
 
 ########################### FN: ENSEMBLE ESTIMATES ###########################
 

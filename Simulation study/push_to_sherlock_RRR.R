@@ -20,8 +20,7 @@ ls -l . | egrep -c '^-'
 grep -l "long" * | wc -l
 
 # see the errors
-vim /home/groups/manishad/RRR/sbatch_files/slurm*
-vim /home/groups/manishad/RRR/sbatch_files/rm_1.err
+nano /home/groups/manishad/RRR/sbatch_files/slurm-49473808.out
 
 # see the scen parameters
 nano /home/groups/manishad/RRR/scen_params.csv
@@ -99,6 +98,8 @@ nano long_results_job_1_.csv
 rm /home/groups/manishad/RRR/sim_results/*
   rm /home/groups/manishad/RRR/sim_results/short/*
   rm /home/groups/manishad/RRR/sim_results/long/*
+  echo /home/groups/manishad/RRR/sim_results/long/* | xargs /bin/rm -f # works if above says "argument list too long"
+
   
   rm /home/groups/manishad/RRR/sim_results/overall_stitched/*
   rm /home/groups/manishad/RRR/sbatch_files/rm*
@@ -106,4 +107,5 @@ rm /home/groups/manishad/RRR/sim_results/*
   
   # delete all sbatches
   rm -r /home/groups/manishad/RRR/sbatch_files/*
+  echo /home/groups/manishad/RRR/sbatch_files/* | xargs /bin/rm -f  # works if above says "argument list too long"
   

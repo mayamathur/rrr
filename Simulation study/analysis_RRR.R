@@ -19,51 +19,79 @@ simulate.dist.from.scratch = FALSE
 #################### READ IN DATA ####################
 
 # TO USE JUST DESKTOP RESULTS
-setwd("~/Desktop")
+#setwd("~/Desktop")
 library(data.table)
-s = fread("stitched.csv")
-names(s) = as.character(s[2,])
-s = as.data.frame(s[-c(1:2), -1])
-s$sim_group = 3  # identify which "group" of simulations this belongs to
+setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation results/2019-9-1 last two sets combined/Stitched data")
+s1 = fread("stitched_expo_normal.csv")
+names(s1) = as.character(s1[1,])
+s1 = as.data.frame(s1[-c(1), -1])
+s1$sim_group = 1  # identify which "group" of simulations this belongs to
+
+s2 = fread("stitched_unif_t.csv")
+#names(s2) = as.character(s2[1,])
+s2 = as.data.frame(s2[-c(1), -1])
+s2$sim_group = 2  # identify which "group" of simulations this belongs to
+
+
+s3 = fread("stitched_all4_ensemble.csv")
+names(s3) = as.character(s3[2,])
+s3 = as.data.frame(s3[-c(1:2), -1])
+s3$sim_group = 3  # identify which "group" of simulations this belongs to
 # fix stupid names situation
 
+s = rbind(s1, s2, s3)
+# write.csv(s,
+#           "overall_stitched.csv",
+#           row.names = FALSE)
 
-# # TO MERGE RESULTS
-# # current results (unif2 and t)
-# # ~~~ replace with the file called "stitched_unif_t"
-# setwd("~/Desktop")
-# library(data.table)
-# s1 = fread("stitched.csv")
-# s1 = s1[-1,-1]
-# head(s1)
-# 
-# # previous results (expo and normal)
-# setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation results/2019-8-20 normal and expo")
-# s2 = fread("stitched_expo_normal.csv")
-# # fix stupid names situation
-# names(s2) = as.character(s2[1,])
-# s2 = s2[-1,-1]
-# 
-# s1 = as.data.frame(s1)
-# s2 = as.data.frame(s2)
-# 
-# s = rbind(s1, s2)
-# dim(s)
-# # END OF PART FOR MERGING RESULTS
+# read in existing data
+s = as.data.frame( fread("overall_stitched.csv") )
 
-# how close are we to being done?
-#reps.per.scen = s %>% group_by(scen.name) %>% summarise(reps = n()/2)
+#################### DATA CLEANING AND QUALITY CHECKS ####################
 
 # remove failed reps, etc.
 table( !is.na(s$scen.name) & !is.na(s$Method) & !is.na(s$TheoryP) )
 s = s %>% filter( !is.na(scen.name) & !is.na(Method) & !is.na(TheoryP))
+
+# remove erroneously-written rows with nonsense scenario names (e.g., "TheoryP")
+table( s$scen.name )
+s = s[ !is.na( as.numeric(s$scen.name) ), ]
 s = droplevels(s)
 
+# rename the scenarios
+# note that some identical scenarios have different names
+#  this is an artifact from having run multiple sets of simulations
+s = s %>% group_by(k, minN, V, true.effect.dist, TheoryP) %>%  # these are all the variables defining unique scenarios
+  mutate(scen.name.2 = group_indices())
+  
+
+# how many reps were run per scenario and Method?
+reps = s %>% group_by(scen.name.2, Method) %>%
+  summarise( n = n() ) %>%
+  arrange(n)
+View(reps)
+# scenarios with too few reps for any method
+length( unique( reps$scen.name.2[ reps$n < 500 ] ) )
+
+# investigate: which methods are most prone to having too few?
+reps2=reps %>% filter( n < 500)
+table(reps2$Method)
+
+fake = s %>% filter( scen.name.2 == 300 )
+table(fake$Method)
+
 # proportion of times the ensemble bootstrap failed
-boot.failures = s %>% filter(sim_group == 3) %>%  # only look at reps from last group; otherwise they wouldn't have attempted bootstrap
-  group_by(k, TheoryP) %>%
+( boot.failures = s %>% filter(sim_group == 3) %>%  # only look at reps from last group; otherwise they wouldn't have attempted bootstrap
+    group_by(k, TheoryP) %>%
+    filter(Method == "NP ensemble") %>%
+    summarise( boot.problem = sum(!is.na(Note)) / length(Note) ) )
+View(boot.failures)
+# ** overall mean boot failures
+s %>% filter(sim_group == 3) %>%  # only look at reps from last group; otherwise they wouldn't have attempted bootstrap
+  #group_by(k, TheoryP) %>%
   filter(Method == "NP ensemble") %>%
   summarise( boot.problem = sum(!is.na(Note)) / length(Note) )
+
 
 
 # make sure variables are correct type
@@ -79,12 +107,12 @@ s = s %>%
 
 # number of simulations per scenario
 #  not including sim failures
-s = s %>% group_by(scen.name) %>%
-  mutate( sim.reps = n()/4 )
+# s = s %>% group_by(scen.name) %>%
+#   mutate( sim.reps = n()/4 )
 
 # ~~ temporarily avoid looking at small scenarios while
 #  the results are running
-s = s[ s$sim.reps > 100, ]
+#s = s[ s$sim.reps > 100, ]
 
 
 # sanity check for data generation: TheoryP and TruthP should be close
@@ -97,7 +125,7 @@ s %>% group_by(V, TheoryP) %>%
 
 #################### DATA WRANGLING ####################
 
-# name the simulation reps
+# rename the scenarios
 ( n.methods = length( unique(s$Method) ) )
 s$sim.rep = rep( 1:( nrow(s) / n.methods ), each = n.methods )
 
@@ -120,11 +148,20 @@ s$plot.panel = paste( expression(tau^2), " = ", s$V,
 # s = merge( s, keep.rep, by = "sim.rep")
 # prop.table(table(s$logit.was.NA))
 
-# summarize results, leaving NA if ANY reps failed (for logit)
+# summarize results
 res.all = s %>%
-  group_by(scen.name, Method, true.effect.dist) %>%
-  mutate(EmpVar = var(phat)) %>%
-  summarise_if( is.numeric, function(x) mean(x, na.rm = TRUE) )
+  group_by(k, V, minN, TheoryP, true.effect.dist, Method) %>%
+  mutate(EmpVar = var(phat),
+         n.cover = length( !is.na(Cover) ),
+         n.phat = length( !is.na(phat) ) ) %>%
+  summarise_if( is.numeric, function(x) mean(x, na.rm = TRUE) ) %>%
+  arrange(n.cover, n.phat)
+View(res.all)
+table(res.all$n.cover < 500)
+table(res.all$n.phat < 500)
+
+# ~~ next: give unique names
+
 
 res.all = res.all[ !is.na(res.all$Method), ]
 
@@ -132,8 +169,9 @@ res.all = res.all[ !is.na(res.all$Method), ]
 # MSE of Phat
 res.all$RMSE = sqrt( res.all$phatBias^2 + res.all$EmpVar )
 
-res.all %>% group_by(scen.name) %>%
-  mutate( RMSE.parametric = RMSE[Method == "Parametric"] )
+res.all = res.all %>% group_by(scen.name) %>%
+  #filter(Method == "Parametric") %>%
+  mutate( RMSE.parametric = RMSE[ Method == "Parametric" ] )
 
 # for plotting joy
 res.all$muN.pretty = paste( "E[N] = ", res.all$muN )
@@ -264,20 +302,47 @@ View(agg.win)
 
 #################### ** SUMMARIZE RESULTS FOR PAPER ####################
 
-# bm 
 ##### Inference #####
-# filter out the levels of heterogeneity for which we don't recommend our methods
-inf.table = res.all %>%
+
+# baseline requirements:
+#  - k >= 10
+#  - tau/mu >= 0.40 (i.e., V >= 0.04)
+
+# first use BCa if it converges:
+# min coverage: 91%
+nodeA = res.all %>%
   filter(k > 5) %>%
+  filter(V>=0.04)%>%
+  filter(!is.na(Cover)) %>%
   group_by(Method, true.effect.dist) %>%
-  summarise( Mean.Cover = mean(Cover, na.rm = TRUE),
-             Min.Cover = min(Cover, na.rm = TRUE),
+  summarise( Mean.Cover = mean(Cover),
+             Min.Cover = min(Cover),
              #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
              Cover.Above.90 = sum(Cover>.9)/length(Cover),
-             
-             Width = mean(Width, na.rm = TRUE) )
+             Width = mean(Width), 
+             reps = n() )
+View(nodeA)
 
-View(inf.table)
+# if it doesn't converge, here are scenarios in which 
+#  you can use NP sign test instead:
+#  - normal or t-distributed effects
+#  - tau/mu >= 1 (i.e., V >= 0.25)
+# min coverage: 92%
+nodeB = res.all %>%
+  filter(k > 5) %>%
+  filter(V==.25)%>%
+  filter(!is.na(Cover)) %>%
+  group_by(Method, true.effect.dist) %>%
+  summarise( Mean.Cover = mean(Cover),
+             Min.Cover = min(Cover),
+             #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
+             Cover.Above.90 = sum(Cover>.9)/length(Cover),
+             Width = mean(Width) )
+View(nodeB)
+
+
+
+
 
 
 ##### Point Estimates #####

@@ -94,58 +94,58 @@ local = FALSE
 
 
 # ######################################## FOR LOCAL USE ######################################## 
-# if ( local == TRUE ) {
-#   rm(list=ls())
-#   
-#   # helper fns
-#   setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
-#   source("functions_RRR.R")
-#   
-#   # isolate a bad scenario
-#   # row 1, upper panel #3
-#   ( scen.params = make_scen_params( k = c(50),
-#                                     mu = 0.5,  # mean of true effects (log-RR)
-#                                     V = c( 0.04 ),  # variance of true effects
-#                                     muN = NA, # just a placeholder; to be filled in later
-#                                     minN = c( 100 ),
-#                                     sd.w = 1,
-#                                     tail = "above",
-#                                     true.effect.dist = "unif2", # "expo", "normal", or "unif2"
-#                                     TheoryP = c(0.05) ) )
-#   n.scen = nrow(scen.params)
-#   
-#   
-#   # sim.reps = 500  # reps to run in this iterate; leave this alone!
-#   # boot.reps = 1000
-#   sim.reps = 2
-#   boot.reps = 50
-#   
-#   
-#   library(foreach)
-#   library(doParallel)
-#   library(dplyr)
-#   library(boot)
-#   library(purrr)
-#   
-#   
-#   # # ~~~ DEBUGGING: FOR CLUSTER
-#   # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
-#   # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
-#   # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
-#   # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
-#   # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
-#   # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
-#   # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
-#   # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
-#   # setwd("/home/groups/manishad/RRR")
-#   # source("functions_RRR.R")
-#   
-#   # set the number of cores
-#   registerDoParallel(cores=16)
-#   
-#   scen = 1
-# }
-# 
+if ( local == TRUE ) {
+  rm(list=ls())
+
+  # helper fns
+  setwd("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study")
+  source("functions_RRR.R")
+
+  # isolate a bad scenario
+  # row 1, upper panel #3
+  ( scen.params = make_scen_params( k = c(5),
+                                    mu = 0.5,  # mean of true effects (log-RR)
+                                    V = c( 0.01 ),  # variance of true effects
+                                    muN = NA, # just a placeholder; to be filled in later
+                                    minN = c( 100 ),
+                                    sd.w = 1,
+                                    tail = "above",
+                                    true.effect.dist = "unif2", # "expo", "normal", or "unif2"
+                                    TheoryP = c(0.05) ) )
+  n.scen = nrow(scen.params)
+
+
+  # sim.reps = 500  # reps to run in this iterate; leave this alone!
+  # boot.reps = 1000
+  sim.reps = 2
+  boot.reps = 50
+
+
+  library(foreach)
+  library(doParallel)
+  library(dplyr)
+  library(boot)
+  library(purrr)
+
+
+  # # ~~~ DEBUGGING: FOR CLUSTER
+  # # EDITED FOR C++ ISSUE WITH PACKAGE INSTALLATION
+  # library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+  # library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+  # setwd("/home/groups/manishad/RRR")
+  # source("functions_RRR.R")
+
+  # set the number of cores
+  registerDoParallel(cores=16)
+
+  scen = 1
+}
+
 
 ########################### THIS SCRIPT COMPLETELY RUNS 1 SIMULATION (LOCALLY) ###########################
 
@@ -369,7 +369,7 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
     #write.csv("nothing", "flag1.csv")
     # this method has the additional option to compute only the point estimate
     #  but not bootstrap a CI
-    Note = NA
+    Note = "BCa"
     if ("NP ensemble" %in% methods.to.run) {
       ens = my_ens( yi = d$yi, 
                     sei = sqrt(d$vyi) )
@@ -390,13 +390,19 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
                                  if ( p$tail == "above" ) return( sum(ens.b > c(p$q)) / length(ens.b) )
                                  if ( p$tail == "below" ) return( sum(ens.b < c(p$q)) / length(ens.b) )
                                }
-          )
+                                )
           
           bootCIs.ens = boot.ci(boot.res.ens, type="bca")
           boot.lo.ens = bootCIs.ens$bca[4]
           boot.hi.ens = bootCIs.ens$bca[5]
           
         }, error = function(err){
+          # browser()
+          # # if BCa fails, use percentiles instead
+          # boot.lo.ens <<- as.numeric( quantile( boot.res.ens$t, 0.025 ) )
+          # boot.hi.ens <<- as.numeric( quantile( boot.res.ens$t, 0.975 ) )
+          # Note <<- "Percentiles"
+          
           boot.lo.ens <<- NA
           boot.hi.ens <<- NA
           Note <<- err$message
@@ -447,6 +453,11 @@ rs = foreach( i = 1:sim.reps, .combine=rbind ) %dopar% {
 
 
 head(rs)
+
+rs %>% filter(Method == "NP ensemble") %>%
+group_by(Note) %>% 
+  summarise( cover = mean(Cover),
+             n = n() )
 
 
 # time in seconds
