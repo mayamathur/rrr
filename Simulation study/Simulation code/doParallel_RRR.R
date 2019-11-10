@@ -1,7 +1,6 @@
 
-# ensemble-bt version
-
-# note: 2019-8-26_stitched_cumulative.csv has all 4 distributions
+# Modifications for RRR: 
+#  - Add 
 
 # because Sherlock 2.0 restores previous workspace
 rm( list = ls() )
