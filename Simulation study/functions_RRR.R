@@ -1,26 +1,78 @@
 
-# helper fns for simulation study
-# the fn for computing the estimators themselves are in stronger_than_function.R
 
-#  since users will want those
+########################### FN: PORIG NONPARAMETRIC ###########################
 
-########################### FN: ENSEMBLE ESTIMATES ###########################
-
-# my calculation of ensemble estimates
-# see Wang paper
-my_ens = function(yi,
-                  sei ) {
+# get calibrated estimates from replications
+# also get calibrated estimate from original, using replications' mean and variance
+# look up percentile of latter among former
+p_orig_NP = function( yi.orig, 
+                      vi.orig,
+                      yi.rep,
+                      vi.rep ) {
   
-  meta = rma.uni( yi = yi, 
-                  sei = sei, 
+  # calculate ensemble estimates for replications only
+  calib.r = MetaUtility::calib_ests( yi = yi.rep,
+                                     sei = sqrt(vi.rep) )
+  
+  # meta-analyze the replications (for getting below calibrated ests)
+  meta = rma.uni( yi = yi.rep,
+                  sei = sqrt(vi.rep),
                   method = "DL" )
   
-  muhat = meta$b
-  t2 = meta$tau2
+  # calibrated estimate for original
+  calib.o = as.numeric( c(meta$b) + ( c(meta$tau2) / ( c(meta$tau2) + vi.orig ) )^(1/2) * ( yi.orig - c(meta$b) ) )
+    
+  # get percentile of original within replications
+  pct =  ecdf(calib.r)(calib.o)
   
-  # return ensemble estimates
-  c(muhat) + ( c(t2) / ( c(t2) + sei^2 ) )^(1/2) * ( yi - c(muhat) )
+  # average over all calibrated estimates, weighting them equally
+  return( data.frame(pct = pct,
+                     calib.o = calib.o) )
 }
+
+
+# # this version is WRONG
+# p_orig_NP = function( yi.orig, 
+#                       vi.orig,
+#                       N.orig,
+#                       yi.rep,
+#                       vi.rep ) {
+#   
+#   #browser()
+#   
+#   # calculate ensemble estimates for replications only
+#   calib.r = MetaUtility::calib_ests( yi = yi.rep,
+#                                      sei = sqrt(vi.rep) )
+#   
+#   # P( abs( point estimate - yi.rep ) > observed | true theta = calib ) for each calibrated estimate
+#   t = ( c(yi.orig) - calib.r ) / sqrt(vi.orig)
+#   # two-tailed p-value
+#   # symmetric despite arbitrary distribution of true effects because of sampling dist
+#   pval = 2 * ( 1 - pt( abs(t),
+#                        df = N.orig - 1 ) )
+#   
+#   # average over all calibrated estimates, weighting them equally
+#   return( mean(pval) )
+# }
+
+
+# ########################### FN: ENSEMBLE ESTIMATES ###########################
+# 
+# # my calculation of ensemble estimates
+# # see Wang paper
+# my_ens = function(yi,
+#                   sei ) {
+#   
+#   meta = rma.uni( yi = yi, 
+#                   sei = sei, 
+#                   method = "DL" )
+#   
+#   muhat = meta$b
+#   t2 = meta$tau2
+#   
+#   # return ensemble estimates
+#   c(muhat) + ( c(t2) / ( c(t2) + sei^2 ) )^(1/2) * ( yi - c(muhat) )
+# }
 
 ########################### FN: SIMULATE 1 STUDY ###########################
 
@@ -217,7 +269,7 @@ sim_data = function( k,
   # initialize estimated ES to values that will enter the while-loop
   t2 = 0  
   
-  # if RE fit isn't apparently causative, or if denominator is going to be undefined, sample again
+  # if denominator is going to be undefined, sample again
   # ~~~~~~ NOTE: NEED TO BE CAREFUL CHOOSING PARAMETERS TO AVOID SYSTEMATICALLY
   # REJECTING LOTS OF SAMPLES WITH LOWER HETEROGENEITY
   # ~~~ MAYBE DON'T NEED TO REJECT 
@@ -256,175 +308,30 @@ sim_data = function( k,
 
 ##### Fn: Check CI coverage #####
 covers = function( truth, lo, hi ) {
+
+  if ( is.null(truth) | is.null(lo) | is.null(hi) ) return(NA)
+  if ( is.na(truth) | is.na(lo) | is.na(hi) ) return(NA)
+  
   return( (lo <= truth) & (hi >= truth) )
 }
 
-
-
-########################### FN: COMPUTE PERFORMANCE FOR 1 SCENARIO ###########################
-
-# all the point estimates are on log scale
-power = function(scen, 
-                 CI.level = 0.95
-) {
-  
-  
-  # extract simulation params for this scenario (row)
-  # exclude the column with the scenario name itself (col) 
-  p = scen.params[ scen.params$scen.name == scen, names(scen.params) != "scen.name"]
-  
-  
-  for (i in 1:p$reps) { 
-    # monitor simulation progress
-    if(i %% 100 == 0) cat( c("Rep ", i, " of ", p$reps, "; scenario ", scen), sep="", fill=TRUE) 
-    
-    ##### Simulate Dataset #####
-    
-    d = sim_data( k = p$k, 
-                  mu = p$mu, 
-                  V = p$V,
-                  muN = p$muN, 
-                  minN = p$minN,
-                  sd.w = p$sd.w )
-    
-    # true population proportion of studies with ES > q
-    
-    # DEBUGGING
-    mytry = try( sum( d$Mi > q ) / length( d$Mi ) )
-    if("try-error" %in% class(mytry)) browser()
-    p.above = sum( d$Mi > q ) / length( d$Mi )
-    
-    ##### Compute Our Estimators #####
-    
-    # fit RE model
-    m = rma.uni( yi = d$yi,
-                 vi = d$vyi,
-                 measure="SMD",
-                 knha = TRUE,
-                 method = "REML")
-    M = m$b
-    t2 = m$tau2
-    se.M = sqrt( as.numeric(m$vb) )
-    se.t2 = m$se.tau2
-    
-    # suppress warnings about inability to do inference
-    ours = suppressWarnings( prop_stronger( q = p$q,
-                          M = M,
-                          t2 = t2,
-                          se.M = se.M,
-                          se.t2 = se.t2,
-                          CI.level = CI.level,
-                          tail = p$tail ) )
-    
-    
-    # theoretical expectation for proportion of studies with ES > q
-    expected = 1 - pnorm(p$q, mean=p$mu, sd=sqrt(p$V))
-    
-    # for checking coverage of tau^2 CI
-    CIs = confint(m)
-    
-    
-    ##### Get Bootstrapped CI #####
-    
-    # for code-writing only
-    # d = sim_data( k = 50, 
-    #               mu = .5, 
-    #               V = .4,
-    #               muN = 350, 
-    #               minN = 300,
-    #               sd.w = 1 )
-    
-    boot.res = boot( data = d, 
-                     parallel = "multicore",
-                     R = 500, 
-                     statistic = function(original, indices) {
-                       
-                       b = original[indices,]
-                       
-                       mb = rma.uni( yi = b$yi,
-                                     vi = b$vyi,
-                                     measure="SMD",
-                                     knha = TRUE,
-                                     method = "REML")
-                       Mb = mb$b
-                       t2b = mb$tau2
-                       
-                       suppressWarnings( prop_stronger( q = p$q,
-                                      M = Mb,
-                                      t2 = t2b,
-                                      CI.level = CI.level,
-                                      tail = p$tail )$Est )
-                     }
-    )
-    
-    bootCIs = boot.ci(boot.res, type="perc")
-    boot.lo = bootCIs$percent[4]
-    boot.hi = bootCIs$percent[5]
-    
-    
-    
-    # fill in new row of summary dataframe with bias, coverage, and CI width for DM and bootstrap
-    # dataframe with 3 rows, one for each method
-    rows =     data.frame( TrueMean = p$mu,
-                           EstMean = M,
-                           MeanCover = covers( p$mu, summary(m)$ci.lb, summary(m)$ci.ub ),
-                           
-                           TrueVar = p$V,
-                           EstVar = t2,
-                           VarCover = covers( p$V, CIs$random["tau^2", "ci.lb"], CIs$random["tau^2", "ci.ub"] ),
-                           
-                           TheoryP = expected,  # from Normal quantiles given mu, V
-                           TruthP = p.above,   # based on generated data
-                           phat = ours$Est,  # our estimator
-                           phatBias = ours$Est - expected, # phat estimator vs. true proportion above
-                           
-                           # method of calculating CI: exponentiate logit or not?
-                           Method = c( "Logit",
-                                       "Original",
-                                       "Boot"), 
-                           
-                           # CI performance
-                           Cover = c( covers(expected, ours$lo.expon, ours$hi.expon),
-                                      covers(expected, ours$lo, ours$hi),
-                                      covers(expected, boot.lo, boot.hi)
-                           ), # coverage; vector with length 3
-                           
-                           Width = c( ours$hi.expon - ours$lo.expon,
-                                      ours$hi - ours$lo,
-                                      boot.hi - boot.lo )
-    )
-    
-    
-    # concatenate new rows to the results data.table
-    require(data.table)
-    if (i == 1) dt = data.table(rows)
-    else dt = data.table( rbind(dt, rows) )
-    
-  } # end of 1 simulation rep
-  
-  
-  # take means by method
-  # for final result with 3 rows, 1 per method
-  # http://stackoverflow.com/questions/16513827/r-summarizing-multiple-columns-with-data-table
-  #dt = dt[, lapply(.SD, mean, na.rm=TRUE), by=Method ]
-  return( as.data.frame(dt) )
-}
-
-
 ########################### FN: MAKE SCENARIO PARAMETERS ###########################
 
-
+# if muN left unspecified, defaults to same as minN
 # all arguments that are scen parameters can be vectors
 #  for use in expand_grid
 make_scen_params = function( k,
                              mu,  # mean of true effects (log-RR)
                              V,  # variance of true effects
-                             muN, # just a placeholder; to be filled in later
+                             muN = NA, # just a placeholder; to be filled in later
                              minN,
                              sd.w,
                              tail,
                              true.effect.dist, # "expo" or "normal"
                              TheoryP,
+                             
+                             delta, 
+                             N.orig,
                              
                              # number to start scenario names 
                              start.at = 1) {
@@ -438,7 +345,9 @@ make_scen_params = function( k,
                              sd.w = sd.w,
                              tail = tail,
                              true.effect.dist = true.effect.dist, # "expo" or "normal"
-                             TheoryP = TheoryP)
+                             TheoryP = TheoryP,
+                             delta = delta,
+                            N.orig = N.orig )
   
   scen.params = scen.params %>% rowwise %>%
     mutate( q = calculate_q(true.effect.dist = true.effect.dist,
@@ -450,7 +359,7 @@ make_scen_params = function( k,
   scen.params$scen.name = start.at : ( start.at + nrow(scen.params) - 1 )
   
   # avoid doing all factorial combinations of muN and minN this way
-  scen.params$muN = scen.params$minN + 50
+  if ( all(is.na(scen.params$muN) ) ) scen.params$muN = scen.params$minN
   
   return(scen.params)
 }
@@ -508,124 +417,6 @@ calculate_q = function(true.effect.dist,
 # Mi = Mi + (0.5 - sqrt(.25^2))
 # sum(Mi > q) / length(Mi)
 
-
-########################### FN: NONPARAMETRIC INFERENCE FROM RUI WANG PAPER ###########################
-
-# verbatim from their paper
-
-##########################################################################
-##########################################################################
-### theta: treatment effect estimates ###
-### (usually a vector of length K, K is the number of studies) ###
-### theta.sd: estimated standard error of theta ###
-### (usually a vector of same length as theta) ###
-### mu: the specified value in the null hypothesis. ###
-### pct: the percentile of interest ###
-### 0.5=median, ###
-### 0.25=25th percentile, ###
-### 0.75=75th percentile. ###
-### nperm: number of realizations in the conditional test ###
-
-##########################################################################
-### Output a 2-sided p-value. ###
-##########################################################################
-
-phi <- function(theta=theta,
-                theta.sd=theta.sd,
-                mu=mu0,
-                pct=0.5,
-                nperm=2000) {
-  
-  K<-length(theta)
-  
-  # "score" is equivalent to kth contribution of sum in 
-  #  first eq. on page 4 (see my note in sidebar for equivalence)
-  score <- pnorm( (mu-theta)/theta.sd ) - 0.5  
-  # OBSERVED test stat
-  stat<-sum(score)
-  
-  # initialize what will be the test stat vector UNDER H0
-  # i.e., Tstar in paper
-  test.stat<-rep(0,nperm)
-  
-  # draw Deltas for nperm iterations
-  # this is the H0 distribution
-  i<-1
-  while (i<=nperm) {
-    # here they use "ref1" and "ref2" (0/1) instead of Delta (1/-1)
-    #  for computational convenience
-    ref1 <- rbinom(K,1,pct)  
-    ref2 <- 1-ref1
-    # this is the second eq. on page 4 of paper
-    test.stat[i] <- sum( (abs(score)) * ref1 - (abs(score))*ref2 )
-    i<-i+1
-  }
-  
-  # compare test.stat (which is under H0) to observed one
-  p1 <- mean(as.numeric(test.stat<=stat))
-  p2 <- mean(as.numeric(test.stat>=stat))
-  p3 <- mean(as.numeric(test.stat==stat))
-  pval <- 2*min(p1,p2) - p3
-  return(pval)
-}
-
-
-# this is my own fn
-# a simpler grid search across Phat values than their search across percentiles
-# since Phat is conveniently bounded
-# calculates p-value for different percentiles, fixing q, rather than for different q, fixing percentile
-prop_stronger_np = function(q,
-                            yi,
-                            vi,
-                            CI.level = 0.95, 
-                            tail = NA,
-                            R = 2000,
-                            return.vectors = FALSE ) {
-  
-
-  # Phat values to try
-  pct.vec = seq( 0, 1, 0.001 )
-
-  pvals = pct.vec %>% map( function(x) phi( theta = yi,
-                                            theta.sd = sqrt(vi),
-                                            mu = q,
-                                            pct = x,
-                                            nperm = R ) ) %>%
-                          unlist # return a double-type vector instead of list
-  
-  # NPMLE: the value of Phat.below with the largest p-value?
-  Phat.below.NP = pct.vec[ which.max( pvals ) ]
-  
-  # get CI limits
-  alpha = 1 - CI.level
-  # in case the point estimate is already 1 or 0, avoid null objects
-  if ( Phat.below.NP == 1 ) CI.hi.NP = 1
-  else CI.hi.NP = pct.vec[ pct.vec > Phat.below.NP ][ which.min( abs( pvals[ pct.vec > Phat.below.NP ] - alpha ) ) ]
-  
-  if ( Phat.below.NP == 0 ) CI.lo.NP = 0
-  else CI.lo.NP = pct.vec[ pct.vec < Phat.below.NP ][ which.min( abs( pvals[ pct.vec < Phat.below.NP ] - alpha ) ) ]
-  
-  # if user wanted the upper tail, reverse everything
-  if ( tail == "below" ) {
-    res = data.frame(Est = Phat.below.NP,
-                       lo = CI.lo.NP,
-                       hi = CI.hi.NP )
-    pcts = pct.vec
-  }
-  
-  # if user wanted the upper tail, reverse everything
-  if ( tail == "above" ) {
-    res = data.frame( Est = 1 - Phat.below.NP,
-                       lo = 1 - CI.hi.NP,
-                       hi = 1 - CI.lo.NP )
-    pcts = 1 - pct.vec
-  }
-  
-  if ( return.vectors == FALSE ) return(res)
-  if ( return.vectors == TRUE ) invisible( list(res = res, 
-                                             pcts = pcts,
-                                             pvals = pvals) )
-}
 
 
 ########################### FN: STITCH RESULTS FILES ###########################
@@ -845,46 +636,46 @@ sbatch_not_run = function(.results.singles.path,
 sbatch_skeleton <- function() {
   return(
     "#!/bin/bash
-    #################
-    #set a job name  
-    #SBATCH --job-name=JOBNAME
-    #################  
-    #a file for job output, you can check job progress
-    #SBATCH --output=OUTFILE
-    #################
-    # a file for errors from the job
-    #SBATCH --error=ERRORFILE
-    #################
-    #time you think you need; default is one hour
-    #SBATCH --time=JOBTIME
-    #################
-    #quality of service; think of it as job priority
-    #SBATCH --qos=QUALITY
-    #################
-    #submit to both owners and normal partition
-    #SBATCH -p normal,owners
-    #################
-    #number of nodes you are requesting
-    #SBATCH --nodes=NODENUMBER
-    #################
-    #memory per node; default is 4000 MB
-    #SBATCH --mem=MEMPERNODE
-    #you could use --mem-per-cpu; they mean what we are calling cores
-    #################
-    #get emailed about job BEGIN, END, and FAIL
-    #SBATCH --mail-type=MAILTYPE
-    #################
-    #who to send email to; please change to your email
-    #SBATCH  --mail-user=USER_EMAIL
-    #################
-    #task to run per node; each node has 16 cores
-    #SBATCH --ntasks=TASKS_PER_NODE
-    #################
-    #SBATCH --cpus-per-task=CPUS_PER_TASK
-    #now run normal batch commands
-    
-    ml load R
-    srun R -f PATH_TO_R_SCRIPT ARGS_TO_R_SCRIPT")
+#################
+#set a job name  
+#SBATCH --job-name=JOBNAME
+#################  
+#a file for job output, you can check job progress
+#SBATCH --output=OUTFILE
+#################
+# a file for errors from the job
+#SBATCH --error=ERRORFILE
+#################
+#time you think you need; default is one hour
+#SBATCH --time=JOBTIME
+#################
+#quality of service; think of it as job priority
+#SBATCH --qos=QUALITY
+#################
+#submit to both owners and normal partition
+#SBATCH -p normal,owners
+#################
+#number of nodes you are requesting
+#SBATCH --nodes=NODENUMBER
+#################
+#memory per node; default is 4000 MB
+#SBATCH --mem=MEMPERNODE
+#you could use --mem-per-cpu; they mean what we are calling cores
+#################
+#get emailed about job BEGIN, END, and FAIL
+#SBATCH --mail-type=MAILTYPE
+#################
+#who to send email to; please change to your email
+#SBATCH  --mail-user=USER_EMAIL
+#################
+#task to run per node; each node has 16 cores
+#SBATCH --ntasks=TASKS_PER_NODE
+#################
+#SBATCH --cpus-per-task=CPUS_PER_TASK
+#now run normal batch commands
+
+ml load R
+R -f PATH_TO_R_SCRIPT ARGS_TO_R_SCRIPT")
 }
 
 

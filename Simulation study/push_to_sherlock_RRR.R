@@ -6,8 +6,8 @@
 # see the sbatches
 cd /home/groups/manishad/RRR/sbatch_files
 
-sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
-sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/stitch.sbatch
+sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/1.sbatch
+sbatch -p qsu,owners,normal /home/groups/manishad/RRR/stitch.sbatch
 
 # check on my running or pending jobs
 squeue -u mmathur -o%T -ST | uniq -c
@@ -20,7 +20,7 @@ ls -l . | egrep -c '^-'
 grep -l "long" * | wc -l
 
 # see the errors
-nano /home/groups/manishad/RRR/sbatch_files/slurm-49570398.out
+nano /home/groups/manishad/RRR/sbatch_files/rm_1455.err
 
 # see the scen parameters
 nano /home/groups/manishad/RRR/scen_params.csv
@@ -33,8 +33,14 @@ nano /home/groups/manishad/RRR/sim_results/overall_stitched/sti*
 ####################### CODE -> SHERLOCK ####################### 
 
 # push all the individual files
-scp -r /Users/mmathur/Dropbox/Personal\ computer/Independent\ studies/RRR\ estimators/Linked\ to\ OSF\ \(RRR\)/Other\ RRR\ code\ \(git\)/Simulation\ study/* mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR
+# include "-r" after scp to push contents of any sub-folders (not doing this to avoid pushing results)
+scp /Users/mmathur/Dropbox/Personal\ computer/Independent\ studies/RRR\ estimators/Linked\ to\ OSF\ \(RRR\)/Other\ RRR\ code\ \(git\)/Simulation\ study/* mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR
+
+# just push doParallel.R
+scp /Users/mmathur/Dropbox/Personal\ computer/Independent\ studies/RRR\ estimators/Linked\ to\ OSF\ \(RRR\)/Other\ RRR\ code\ \(git\)/Simulation\ study/doParallel_RRR.R mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR
 sbatch -p qsu,owners /home/groups/manishad/RRR/sbatch_files/1.sbatch
+
+sbatch -p qsu,owners /home/groups/manishad/RRR/stitch.sbatch
 
 # stitching sbatch and R
 scp /Users/mmathur/Dropbox/Personal\ computer/Independent\ studies/RRR\ estimators/Linked\ to\ OSF\ \(RRR\)/Other\ RRR\ code\ \(git\)/Simulation\ study/stitch.sbatch mmathur@login.sherlock.stanford.edu:/home/groups/manishad/RRR

@@ -10,15 +10,31 @@ path = "/home/groups/manishad/RRR"
 setwd(path)
 source("functions_RRR.R")
 
+library(crayon, lib.loc = "/home/groups/manishad/Rpackages/")
+library(vctrs, lib.loc = "/home/groups/manishad/Rpackages/")
+library(pillar, lib.loc = "/home/groups/manishad/Rpackages/")
+library(MetaUtility, lib.loc = "/home/groups/manishad/Rpackages/")
+library(dplyr, lib.loc = "/home/groups/manishad/Rpackages/")
+library(foreach, lib.loc = "/home/groups/manishad/Rpackages/")
+library(doParallel, lib.loc = "/home/groups/manishad/Rpackages/")
+library(boot, lib.loc = "/home/groups/manishad/Rpackages/")
+library(metafor, lib.loc = "/home/groups/manishad/Rpackages/")
+library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
+library(purrr, lib.loc = "/home/groups/manishad/Rpackages/")
+library(metRology, lib.loc = "/home/groups/manishad/Rpackages/")
+library(fansi, lib.loc = "/home/groups/manishad/Rpackages/")
+
+
 ######## STITCH LONG FILES ########
 
-library(data.table, lib.loc = "/home/groups/manishad/Rpackages/")
 s = stitch_files(.results.singles.path = "/home/groups/manishad/RRR/sim_results/long",
                  .results.stitched.write.path = "/home/groups/manishad/RRR/sim_results/overall_stitched",
                  .name.prefix = "long_results",
                  .stitch.file.name="stitched.csv",
                  .start.num = start.num,
                  .stop.num = stop.num )
+
+
 
 
 
