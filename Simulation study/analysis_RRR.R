@@ -39,6 +39,7 @@ s = as.data.frame( fread("stitched.csv") )
 # s = rbind(s1, s2)
 dim(s)
 
+
 #################### DATA QUALITY CHECKS ####################
 
 # percent finished
