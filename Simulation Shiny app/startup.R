@@ -14,13 +14,13 @@ library(dplyr)
 # keeps original error messages
 options(shiny.sanitize.errors = FALSE)
 
-agg = read.csv("agg.csv")
+agg1 = read.csv("agg1_porig.csv")
 
 
 # functions
 
 subset_data = function(input) {
-  data = agg
+  data = agg1
   
   if ( !is.null(input$k) ) {
     data <- data[data$k %in% input$k,]

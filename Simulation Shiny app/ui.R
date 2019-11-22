@@ -67,32 +67,32 @@ navbarPage( "Explore simulation results", id = "navbar",
                                  fluidRow(
                                    column(4,
                                           checkboxGroupInput( "k", label = "Number of replications",
-                                                              choices = unique(as.character(agg$k) ),
+                                                              choices = unique(as.character(agg1$k) ),
                                                               selected = c("10", "15", "20", "25") ),
                                           
                                           checkboxGroupInput( "minN", label = "Sample size per replication",
-                                                              choices = unique(as.character(agg$minN) ),
-                                                              selected = unique(as.character(agg$minN) ) ),
+                                                              choices = unique(as.character(agg1$minN) ),
+                                                              selected = unique(as.character(agg1$minN) ) ),
                                           
                                           checkboxGroupInput( "Norig", label = "Sample size in original",
-                                                              choices = unique(as.character(agg$N.orig) ),
-                                                              selected = unique(as.character(agg$N.orig) ) )
+                                                              choices = unique(as.character(agg1$N.orig) ),
+                                                              selected = unique(as.character(agg1$N.orig) ) )
                                           
                                    ),
                                    
                                    column(4, 
                                           
                                           checkboxGroupInput( "V", label = "Variance of true effects",
-                                                              choices = unique(as.character(agg$V) ),
+                                                              choices = unique(as.character(agg1$V) ),
                                                               selected = "0.01" ),
                                           
                                           checkboxGroupInput( "dist", label = "True effect distribution",
-                                                              choices = unique(as.character(agg$dist.pretty) ),
+                                                              choices = unique(as.character(agg1$dist.pretty) ),
                                                               selected = "Normal" ),
                                           
                                           checkboxGroupInput( "delta", label = "Delta (standardized mean difference between replication true mean and original true effect)",
-                                                              choices = unique(as.character(agg$delta) ),
-                                                              selected = unique(as.character(agg$delta) ) )
+                                                              choices = unique(as.character(agg1$delta) ),
+                                                              selected = unique(as.character(agg1$delta) ) )
                                           
                                           
                                           
@@ -105,7 +105,7 @@ navbarPage( "Explore simulation results", id = "navbar",
                                           
                                           
                                           checkboxGroupInput( "POrigMethod", label = "Heterogeneity estimation method ",
-                                                              choiceValues = unique(as.character(agg$POrig.Method) ),
+                                                              choiceValues = unique(as.character(agg1$POrig.Method) ),
                                                               choiceNames = c("Paule & Mandel", "REML"),
                                                               selected = "reml" ) )
                                    

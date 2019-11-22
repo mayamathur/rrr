@@ -1,11 +1,9 @@
 
 # Plots to create for paper: 
 # - Rejection rate of Porig by delta (4 plots)
-# - Coverage of Phat (all dists)
+# - Coverage: Just quick stats
 # - RMSE of Phat
 # - Bias of Phat
-#  - Width of Phat
-
 
 
 # Note: "**" denotes key results reported in paper
@@ -131,6 +129,7 @@ levels(agg1$dist.pretty)
 varying = c("k", 
             "V",
             "minN",
+            "N.orig",
             "TheoryP",
             "true.effect.dist")
 
@@ -142,13 +141,18 @@ agg2 = as.data.frame( s %>%
                         group_by(.dots = varying) %>%
                         summarise( n = n(),
                                    Phat.mn = mean(phat),
+                                   Phat.bias.mn = mean(phatBias),
                                    Phat.bt.med.mn = mean(phat.bt.med),
-                                   Cover.mn = mean(Cover) ) )
+                                   Cover.mn = mean(Cover, na.rm = TRUE),
+                                   EmpVar = var(phat),
+                                   RMSE = sqrt(EmpVar + Phat.bias.mn^2) ) )
 
 # for plotting joy
 agg2$N.tot = agg2$minN * agg2$k  # only works when minN = muN
 agg2$k.pretty = paste( "No. replications:", agg2$k )
 agg2$N.tot.pretty = paste( "N = ", agg2$N.tot )
+agg2$minN.pretty = paste( "N per replication = ", agg2$minN )
+agg2$Norig.pretty = paste( "N original = ", agg2$N.orig )
 agg2$V.pretty = paste( "V = ", agg2$V )
 agg2$TheoryP.pretty = paste( "True P = ",
                             format(round(agg2$TheoryP, 2), nsmall = 2) )
@@ -164,7 +168,11 @@ agg2$dist.pretty = factor(agg2$dist.pretty,
                                      "Exponential",
                                      "t",
                                      "Uniform mixture"))
-levels(agg2$dist.pretty)
+
+# save the datasets for OSF and Shiny app
+setwd(results.dir)
+write.csv( agg1, "agg1_porig.csv", row.names = FALSE )
+write.csv( agg2, "agg2_phat.csv", row.names = FALSE )
 
 
 #################### TYPE I ERROR RATE (DELTA = 0) ####################
@@ -181,7 +189,7 @@ levels(agg2$dist.pretty)
 # View(typeI)
 # # **in the cases where we over-reject, seems like the issue is that we're 
 # # underestimating V, not that we're estimating phat wrong
-# # bm
+
 
 # ##### normal only #####
 # # **normal only
@@ -202,7 +210,6 @@ levels(agg2$dist.pretty)
 #   theme_bw()
 
 ##### **Plot 1: Type I Error for All Distributions #####
-# with minN on the x-axis; all dists
 shapes = c(69, 78, 84, 85)
 colors = c("black", "orange")
 library(ggplot2)
@@ -282,10 +289,13 @@ ggplot( data = agg1 %>% filter(delta > 0 & POrig.Method == "reml"),
 # candidate rule of thumb: ?
 # also pretty robust to other distributions, surprisingly
 # this rule seems to yield a max Type I error of 6%
-agg %>% filter( delta == 0 &
-                  true.effect.dist == "normal" ) %>%
+agg1 %>% filter( delta == 0 &
+                  true.effect.dist == "normal" &
+                   POrig.Method == "reml" &
+                   k >= 10 &
+                   N.tot >= 4000 ) %>%
   mutate(N.tot = k*minN) %>%
-  group_by(N.tot, N.orig, POrig.Method) %>%
+  #group_by(k, minN, N.orig, POrig.Method) %>%
   summarise( n.scen = n(),
             Reject.max = max(Reject.mn), # max of scenarios' mean rejection rates
              Reject.mn2 = mean(Reject.mn),
@@ -296,15 +306,15 @@ agg %>% filter( delta == 0 &
 # excluding N.orig only temporarily since it's not varying yet
 covars = varying[ !varying %in% c("true.effect.dist", "delta", "N.orig") ]
 
-agg$N.tot = agg$k * agg$minN
+agg1$N.tot = agg1$k * agg1$minN
 
 #( string = paste( "Reject.mn > 0.05 ~ ", paste( covars, collapse="+" ), sep = "") )
 m = glm( Reject.mn > 0.05 ~ N.tot * V + POrig.Method,
-     data = agg %>% filter(true.effect.dist == "normal" & delta == 0) )
+     data = agg1 %>% filter(true.effect.dist == "normal" & delta == 0) )
 summary(m)
 
 m = lrm( as.formula(string),
-         data = agg[ agg$true.effect.dist == "normal" & agg$delta == 0, ] )
+         data = agg1[ agg1$true.effect.dist == "normal" & agg1$delta == 0, ] )
 
 
 
@@ -312,148 +322,104 @@ m = lrm( as.formula(string),
 # time to work on the summary tables below and then Phat plots :) 
 
 
-#################### ** TABLES FOR PAPER: HIGH-LEVEL SUMMARY OF INFERENCE AND POINT ESTIMATE RESULTS ####################
-
-##### Inference Summary #####
-inf.table = agg %>%
-  filter(k>5, !is.na(Cover.mn)) %>%
- # group_by(V, Method.inf.pretty) %>%
-  summarise( Mean.Cover = mean(Cover.mn),
-             Min.Cover = min(Cover.mn),
-             #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
-             #Cover.Above.90 = sum(Cover>.9)/length(Cover),
-             Width = mean(Width.mn) )
-View(inf.table)
-library(xtable)
-print( xtable(inf.table), include.rownames = FALSE )
-
-##### Point Estimates Summary #####
-est.table = agg %>%
-  group_by(true.effect.dist, V) %>%
-  summarise( #Mean.RMSE = MetaUtility::format_stat( mean(RMSE), digits = 3 ),
-             Mean.Abs.Bias = MetaUtility::format_stat( mean(abs(phatBias.mn)), digits = 3 ) )
-View(est.table)
-
-library(xtable)
-print( xtable(est.table), include.rownames = FALSE )
-
-
-
-
-
+# #################### ** TABLES FOR PAPER: HIGH-LEVEL SUMMARY OF INFERENCE AND POINT ESTIMATE RESULTS ####################
+# 
+# ##### Inference Summary #####
+# inf.table = agg %>%
+#   filter(k>5, !is.na(Cover.mn)) %>%
+#  # group_by(V, Method.inf.pretty) %>%
+#   summarise( Mean.Cover = mean(Cover.mn),
+#              Min.Cover = min(Cover.mn),
+#              #q5Cover = quantile(Cover, 0.05, na.rm = TRUE),
+#              #Cover.Above.90 = sum(Cover>.9)/length(Cover),
+#              Width = mean(Width.mn) )
+# View(inf.table)
+# library(xtable)
+# print( xtable(inf.table), include.rownames = FALSE )
+# 
+# ##### Point Estimates Summary #####
+# est.table = agg %>%
+#   group_by(true.effect.dist, V) %>%
+#   summarise( #Mean.RMSE = MetaUtility::format_stat( mean(RMSE), digits = 3 ),
+#              Mean.Abs.Bias = MetaUtility::format_stat( mean(abs(phatBias.mn)), digits = 3 ) )
+# View(est.table)
+# 
+# library(xtable)
+# print( xtable(est.table), include.rownames = FALSE )
+# 
+# 
+# 
+# 
+# 
 
 
 #################### PHAT PLOTS ####################
 
 
-# scenario parameters that vary
-varying = c("k", 
-            "V",
-           # "minN",  # ~~~ averaging over these
-          #  "muN",
-            "TheoryP",  # don't group by TheoryP because not relevant for Porig
-            "delta",
-            "N.orig",
-            "true.effect.dist",
-            "sd.w")
+# # scenario parameters that vary
+# varying = c("k", 
+#             "V",
+#            # "minN",  # ~~~ averaging over these
+#           #  "muN",
+#             "TheoryP",
+#             "delta",
+#             "N.orig",
+#             "true.effect.dist",
+#             "sd.w")
+# 
+# # ".dots" argument allows passing a vector of variable names
+# agg2 = as.data.frame( s %>% group_by(.dots = varying) %>%
+#                        summarise( phat.mn = mean(phat),
+#                                   phatBias.mn = mean(phatBias),
+#                                   Cover.mn = mean(Cover, na.rm=TRUE),
+#                                   #Width.mn = mean(Width),
+#                                   Porig.mn = mean(Porig),
+#                                   Reject.mn = mean(Reject),
+#                                   I2.mn = mean(EstI2) ) )
+# 
+# 
+# 
+# # for plotting joy
+# agg2$k.pretty = paste( "No. replications:", agg2$k )
+# agg2$muN.pretty = paste( "E[N] = ", agg2$muN )
+# agg2$N.orig.pretty = paste( "Norig = ", agg2$N.orig )
+# agg2$delta.pretty = paste( "delta = ", agg2$delta )
+# agg2$V.pretty = paste( "V = ", agg2$V )
+# agg2$TheoryP.pretty = paste( "True P = ",
+#                             format(round(agg2$TheoryP, 2), nsmall = 2) )
+# 
+# agg2$dist.pretty = NA
+# agg2$dist.pretty[ agg2$true.effect.dist == "normal" ] = "Normal"
+# agg2$dist.pretty[ agg2$true.effect.dist == "expo" ] = "Exponential"
+# agg2$dist.pretty[ agg2$true.effect.dist == "t.scaled" ] = "t"
+# agg2$dist.pretty[ agg2$true.effect.dist == "unif2" ] = "Uniform mixture"
 
-# ".dots" argument allows passing a vector of variable names
-agg = as.data.frame( s %>% group_by(.dots = varying) %>%
-                       summarise( phat.mn = mean(phat),
-                                  phatBias.mn = mean(phatBias),
-                                  Cover.mn = mean(Cover, na.rm=TRUE),
-                                  #Width.mn = mean(Width),
-                                  Porig.mn = mean(Porig),
-                                  Reject.mn = mean(Reject),
-                                  I2.mn = mean(EstI2) ) )
-
-
-
-# for plotting joy
-agg$k.pretty = paste( "No. replications:", agg$k )
-agg$muN.pretty = paste( "E[N] = ", agg$muN )
-agg$N.orig.pretty = paste( "Norig = ", agg$N.orig )
-agg$delta.pretty = paste( "delta = ", agg$delta )
-agg$V.pretty = paste( "V = ", agg$V )
-agg$TheoryP.pretty = paste( "True P = ",
-                            format(round(agg$TheoryP, 2), nsmall = 2) )
-
-agg$dist.pretty = NA
-agg$dist.pretty[ agg$true.effect.dist == "normal" ] = "Normal"
-agg$dist.pretty[ agg$true.effect.dist == "expo" ] = "Exponential"
-agg$dist.pretty[ agg$true.effect.dist == "t.scaled" ] = "t"
-agg$dist.pretty[ agg$true.effect.dist == "unif2" ] = "Uniform mixture"
-
-
-# plot one level of heterogeneity  
-# .data: res.all or some subset of it (e.g., for one distribution)
-plot_group = function( 
-  .title ="",
-  .ylab = "Coverage",
-  .legend = TRUE,
-  .y.name,
-  .limits = c(0.7, 1), 
-  .breaks = seq(0,1,.1),
-  .data ) {
-  
-  colors = c("orange", "black", "red", "blue")
-  
-  p = 
-    ggplot( .data, aes_string( x="k",
-                               y=.y.name,
-                               shape = "N.orig.pretty",
-                               color="TheoryP.pretty" ) ) +
-    geom_line(lwd=1) +
-    geom_point(size=2) +
-    theme_bw() +
-    scale_color_manual(values=colors) +
-    scale_alpha_continuous( limits = c(0,1) ) +
-    scale_y_continuous( limits=.limits, breaks=.breaks ) +
-    ylab(.ylab) +
-    ggtitle( .title ) +
-    facet_wrap( ~ dist.pretty + V.pretty )
-  #facet_grid( TheoryP.pretty ~ muN.pretty )
-  
-  # from other plots
-  # library(ggplot2)
-  # ggplot( data = agg %>% filter(delta == 0),
-  #         aes(x = k,
-  #             y = Reject.mn,
-  #             color = as.factor(minN),
-  #             shape = as.factor(N.orig)) ) +
-  #   geom_point(size=2) +
-  #   geom_line() +
-  #   facet_wrap(~ dist.pretty + V.pretty) +
-  #   theme_bw()
-
-  
-  if ( .ylab == "Coverage" ) p = p + geom_hline(yintercept = 0.95, linetype=2)
-  if ( .ylab == "Bias" ) p = p + geom_hline(yintercept = 0, linetype=2)
-  
-  if ( .legend == TRUE ) {
-    return(p)
-  } else {
-    return(p + theme(legend.position="none"))
-  }
-  
-}  
-
+##### Table: Coverage ######
+# not interesting since it's always very high
 plot_group(.y.name = "Cover.mn",
            .ylab = "Coverage",
-           .data = agg,
-           .limits = c(0.8,1))
-# bm: not sure why there are still multiple lines
+           .data = agg2,
+           .limits = c(0.85,1),
+           .breaks = seq(0.85,1,.05))
 
+# **Min coverage for k >= 10
+agg2 %>% filter( k >= 10 ) %>%
+  summarise( min(Cover.mn) )
 
-plot_group(.y.name = "phatBias.mn",
+##### **Plot 3: Bias #####
+plot_group(.y.name = "Phat.bias.mn",
            .ylab = "Bias",
-           .data = agg,
+           .data = agg2,
            .limits = c(-0.1, .4))
-           #.limits = c(0.8,1))
-# bm: not sure why there are still multiple lines
 
-# shapes: Norig
-# colors: minN
+
+##### **Plot 4: RMSE #####
+plot_group(.y.name = "RMSE",
+           .ylab = "RMSE",
+           .data = agg2,
+           .limits = c(0, .5))
+
+
 
 
 
