@@ -61,157 +61,176 @@ as.data.frame( s %>% group_by(scen.name) %>%
 
 
 
-#################### LOOK AT JUST THE DIAGNOSTIC SCENARIOS ####################
+#################### MAKE 2 AGGREGATED DATASETS ####################
 
-# larger V and changing sd.w
-s %>% filter( true.effect.dist == "normal" &
-                delta == 0 &
-                #V == 0.25 &
-                minN == 200 & 
-                N.orig == 200 ) %>%
-  group_by(V, k, sd.w) %>%
-  summarise( I2.mn = mean(EstI2),
-             Reject.mn = mean(Reject),
-             n = n())
+# in these datasets, n is the number of simulation reps
+#  which may be >1024 (the number per scenario) because sometimes we can group certain scenarios together
 
-# further increasing k above 25 helps again?
-
-
-
-# compare to local version
-s %>% filter( true.effect.dist == "normal" &
-                 k == 15 &
-                 V == 0.25 &
-                 minN == 200 &
-                 #muN == 250 &
-                 N.orig == 200 &
-                 delta == 0 ) %>%
-  #group_by(TheoryP) %>%
-  summarise(Reject.mn = mean(Reject))
-# 0.7-0.9
-
-
-# remove the other sd.w
-s = s %>% filter( POrig.Method == "reml" )
-
-
-
-#################### TYPE I ERROR RATE (DELTA = 0) ####################
-
+##### Aggregated Dataset for Porig Performance #####
+# aggregates across all values of TheoryP since that's about q, and q is irrelevant for Porig
 # scenario parameters that vary
 varying = c("k", 
             "V",
             "minN",
-            #"TheoryP",  # don't group by TheoryP because not relevant for Porig
-            "POrig.Method",
+            "POrig.Method",  # REML or PM
             "delta",
             "N.orig",
             "true.effect.dist")
 
-# Type I error for normal case
-typeI = s %>% filter( true.effect.dist == "normal" & delta == 0 & POrig.Method == "reml" ) %>%
-  group_by(V, k) %>%
-  summarise( I2.mn = mean(EstI2),
-             EstMean.mn = mean(EstMean),
-             EstVar.mn = mean(EstVar),
-             Reject.mn = mean(Reject),
-             n = n()) %>%
-  arrange(Reject.mn)
-View(typeI)
-# **in the cases where we over-reject, seems like the issue is that we're 
-# underestimating V, not that we're estimating phat wrong
-# bm
 
-# ".dots" argument allows passing a vector of variable names
-agg = as.data.frame( s %>% group_by(.dots = varying) %>%
-                 summarise( n = n(),
-                            phat.mn = mean(phat),
-                            phatBias.mn = mean(phatBias),
-                            Cover.mn = mean(Cover, na.rm=TRUE),
-                            #Width.mn = mean(Width),
-                            Porig.mn = mean(Porig),
-                            Reject.mn = mean(Reject),
-                            I2.mn = mean(EstI2) ) )
-# sanity check: did we group on all the needed variables?
-library(testthat)
-expect_equal( nrow(agg), length(unique(s$scen.name) ) )
-
+# need to group on POrig.Method because it's repeated within scen.name
+# (each scenario provides a row for each method)
+agg1 = as.data.frame( s %>%
+                        group_by(.dots = varying) %>%  # ".dots" argument allows passing a vector of variable names
+                        #group_by(scen.name, POrig.Method) %>%
+                       summarise( n = n(),
+                                  # k = k[1],
+                                  # V = V[1],
+                                  # minN = minN[1],
+                                  # POrig.Method = POrig.Method[1],
+                                  # delta = delta[1],
+                                  # N.orig = N.orig[1],
+                                  Reject.mn = mean(Reject),
+                                  EstMean.mn = mean(EstMean),
+                                  EstVar.mn = mean(EstVar),
+                                  I2.mn = mean(EstI2) ) )
+# note that this dataset will have FEWER rows than number of unique scenarios because we don't 
+#  need to group on TheoryP here
+dim(agg1)
+# # merge in the scenario parameters
+# agg1 = left_join( agg1,
+#                   s[ !duplicated(s$scen.name), c("scen.name", varying) ],
+#                   by = "scen.name" )
 
 
 # for plotting joy
-agg$N.tot = agg$minN * agg$k  # only works when minN = muN
-agg$k.pretty = paste( "No. replications:", agg$k )
-agg$N.tot.pretty = paste( "N = ", agg$N.tot )
-agg$N.orig.pretty = paste( "Norig = ", agg$N.orig )
-agg$delta.pretty = paste( "delta = ", agg$delta )
-agg$V.pretty = paste( "V = ", agg$V )
-# agg$TheoryP.pretty = paste( "True P = ",
-#                                 format(round(agg$TheoryP, 2), nsmall = 2) )
+agg1$N.tot = agg1$minN * agg1$k  # only works when minN = muN
+agg1$k.pretty = paste( "No. replications:", agg1$k )
+agg1$N.tot.pretty = paste( "N = ", agg1$N.tot )
+agg1$N.orig.pretty = paste( "Norig = ", agg1$N.orig )
+agg1$delta.pretty = paste( "delta = ", agg1$delta )
+agg1$V.pretty = paste( "V = ", agg1$V )
 
-agg$dist.pretty = NA
-agg$dist.pretty[ agg$true.effect.dist == "normal" ] = "Normal"
-agg$dist.pretty[ agg$true.effect.dist == "expo" ] = "Exponential"
-agg$dist.pretty[ agg$true.effect.dist == "t.scaled" ] = "t"
-agg$dist.pretty[ agg$true.effect.dist == "unif2" ] = "Uniform mixture"
-
-
-
-# **normal only
-library(ggplot2)
-ggplot( data = agg %>% filter(delta == 0 & true.effect.dist == "normal"),
-        aes(x = k,
-            y = Reject.mn,
-            color = as.factor(minN),
-            shape = as.factor(N.orig),
-            lty = POrig.Method) ) +
-  geom_point(size=2) +
-  geom_line() +
-  geom_hline(yintercept = 0.05,
-             color = "red",
-             lty = 2) +
-  scale_y_continuous( limits = c(0, .15),
-                      breaks = seq(0, .15, .01)) +
-  facet_wrap(~ N.orig + V.pretty) +
-  theme_bw()
-
-# same, but using total N in replications instead of N per replication
-ggplot( data = agg %>% filter(delta == 0 & true.effect.dist == "normal"),
-        aes(x = k,
-            y = Reject.mn,
-            color = as.factor(minN),
-            shape = as.factor(N.orig),
-            lty = POrig.Method) ) +
-  geom_point(size=2) +
-  geom_line() +
-  geom_hline(yintercept = 0.05,
-             color = "red",
-             lty = 2) +
-  scale_y_continuous( limits = c(0, .15),
-                      breaks = seq(0, .15, .01)) +
-  facet_wrap(~ N.orig + V.pretty) +
-  theme_bw()
+agg1$dist.pretty = NA
+agg1$dist.pretty[ agg1$true.effect.dist == "normal" ] = "Normal"
+agg1$dist.pretty[ agg1$true.effect.dist == "expo" ] = "Exponential"
+agg1$dist.pretty[ agg1$true.effect.dist == "t.scaled" ] = "t"
+agg1$dist.pretty[ agg1$true.effect.dist == "unif2" ] = "Uniform mixture"
+agg1$dist.pretty = factor(agg1$dist.pretty,
+                          levels = c("Normal",
+                                     "Exponential",
+                                     "t",
+                                     "Uniform mixture"))
+levels(agg1$dist.pretty)
 
 
+##### Aggregated Dataset for Phat Performance #####
+# unlike above, need to group by TheoryP 
+# and don't need to group by delta or N.orig
+# and also need to remove one of the two heterogeneity methods since the rest of their data is duplicated
+varying = c("k", 
+            "V",
+            "minN",
+            "TheoryP",
+            "true.effect.dist")
+
+
+# need to group on POrig.Method because it's repeated within scen.name
+# (each scenario provides a row for each method)
+agg2 = as.data.frame( s %>%
+                        filter(POrig.Method == "reml") %>%  # irrelevant for Phat, but need to get rid of duplicated data
+                        group_by(.dots = varying) %>%
+                        summarise( n = n(),
+                                   Phat.mn = mean(phat),
+                                   Phat.bt.med.mn = mean(phat.bt.med),
+                                   Cover.mn = mean(Cover) ) )
+
+# for plotting joy
+agg2$N.tot = agg2$minN * agg2$k  # only works when minN = muN
+agg2$k.pretty = paste( "No. replications:", agg2$k )
+agg2$N.tot.pretty = paste( "N = ", agg2$N.tot )
+agg2$V.pretty = paste( "V = ", agg2$V )
+agg2$TheoryP.pretty = paste( "True P = ",
+                            format(round(agg2$TheoryP, 2), nsmall = 2) )
+
+
+agg2$dist.pretty = NA
+agg2$dist.pretty[ agg2$true.effect.dist == "normal" ] = "Normal"
+agg2$dist.pretty[ agg2$true.effect.dist == "expo" ] = "Exponential"
+agg2$dist.pretty[ agg2$true.effect.dist == "t.scaled" ] = "t"
+agg2$dist.pretty[ agg2$true.effect.dist == "unif2" ] = "Uniform mixture"
+agg2$dist.pretty = factor(agg2$dist.pretty,
+                          levels = c("Normal",
+                                     "Exponential",
+                                     "t",
+                                     "Uniform mixture"))
+levels(agg2$dist.pretty)
+
+
+#################### TYPE I ERROR RATE (DELTA = 0) ####################
+
+# # Type I error for normal case
+# typeI = s %>% filter( true.effect.dist == "normal" & delta == 0 & POrig.Method == "reml" ) %>%
+#   group_by(V, k) %>%
+#   summarise( I2.mn = mean(EstI2),
+#              EstMean.mn = mean(EstMean),
+#              EstVar.mn = mean(EstVar),
+#              Reject.mn = mean(Reject),
+#              n = n()) %>%
+#   arrange(Reject.mn)
+# View(typeI)
+# # **in the cases where we over-reject, seems like the issue is that we're 
+# # underestimating V, not that we're estimating phat wrong
+# # bm
+
+# ##### normal only #####
+# # **normal only
+# library(ggplot2)
+# ggplot( data = agg1 %>% filter(delta == 0 & true.effect.dist == "normal" & POrig.Method == "reml"),
+#         aes(x = k,
+#             y = Reject.mn,
+#             color = as.factor(minN),
+#             shape = as.factor(N.orig) ) ) +
+#   geom_point(size=2) +
+#   geom_line() +
+#   geom_hline(yintercept = 0.05,
+#              color = "red",
+#              lty = 2) +
+#   scale_y_continuous( limits = c(0, .15),
+#                       breaks = seq(0, .15, .01)) +
+#   facet_wrap(~ N.orig + V.pretty) +
+#   theme_bw()
+
+##### **Plot 1: Type I Error for All Distributions #####
 # with minN on the x-axis; all dists
 shapes = c(69, 78, 84, 85)
+colors = c("black", "orange")
 library(ggplot2)
-ggplot( data = agg[agg$delta == 0,],
+ggplot( data = agg1 %>% filter(delta == 0 & POrig.Method == "reml"),
         aes(x = k,
             y = Reject.mn,
-            color = as.factor(minN),
-            shape = dist.pretty) ) +
+            color = as.factor(minN)
+            #shape = dist.pretty
+            ) ) +
   geom_point(size=2) +
-  #geom_line() +
+  geom_line() +
   geom_hline(yintercept = 0.05,
              color = "red",
              lty = 2) +
   scale_shape_manual(values = shapes) +
-  facet_wrap(~ dist.pretty + V.pretty) +
+  scale_color_manual(values = colors,
+                     name = "Sample size in each replication") +
+  scale_y_continuous( limits = c(0,.13),
+                      breaks = seq(0,.13,.01)) +
+  ylab("Mean rejection rate") +
+  xlab("Number of replications") + 
+  #facet_wrap(~ dist.pretty + V.pretty, nrow=4) +
+  facet_grid(dist.pretty ~ V.pretty) +
   theme_bw()
 
 # # with distributions on the x-axis
 # library(ggplot2)
-# ggplot( data = agg[agg$delta == 0,],
+# ggplot( data = agg1[agg1$delta == 0,],
 #         aes(x = dist.pretty,
 #             y = Reject.mn,
 #             color = k.pretty,
@@ -227,20 +246,33 @@ ggplot( data = agg[agg$delta == 0,],
 
 
 
-# increasing the sample size within the replications doesn't really help
-# but increasing the number of replications definitely does
+#################### POWER (DELTA > 0) ####################
 
-
-# ** best version: all distributions
+##### **Plot 2: Power for All Distributions #####
+# with minN on the x-axis; all dists
+shapes = c(69, 78, 84, 85)
+colors = c("black", "orange")
 library(ggplot2)
-ggplot( data = agg %>% filter(delta == 0),
+ggplot( data = agg1 %>% filter(delta > 0 & POrig.Method == "reml"),
         aes(x = k,
             y = Reject.mn,
-            color = as.factor(minN),
-            shape = as.factor(N.orig)) ) +
+            color = as.factor(minN)
+            #shape = dist.pretty
+        ) ) +
   geom_point(size=2) +
   geom_line() +
-  facet_wrap(~ dist.pretty + V.pretty) +
+  geom_hline(yintercept = 0.05,
+             color = "red",
+             lty = 2) +
+  scale_shape_manual(values = shapes) +
+  scale_color_manual(values = colors,
+                     name = "Sample size in each replication") +
+  # scale_y_continuous( limits = c(0,.13),
+  #                     breaks = seq(0,.13,.01)) +
+  ylab("Mean power") +
+  xlab("Number of replications") + 
+  #facet_wrap(~ dist.pretty + V.pretty, nrow=4) +
+  facet_grid(dist.pretty ~ V.pretty + delta) +
   theme_bw()
 
 
@@ -274,22 +306,10 @@ summary(m)
 m = lrm( as.formula(string),
          data = agg[ agg$true.effect.dist == "normal" & agg$delta == 0, ] )
 
-#################### POWER (DELTA > 0) ####################
 
-# with minN on the x-axis; normal only
-# power is always horrible for delta = 0.2
-# with k = 25, sometimes ok for delta = 0.5
-library(ggplot2)
-ggplot( data = agg %>% filter(delta == 1),
-        aes(x = k,
-            y = Reject.mn,
-            color = as.factor(minN),
-            shape = as.factor(N.orig)) ) +
-  geom_point(size=2) +
-  geom_line() +
-  facet_wrap(~ dist.pretty + V.pretty) +
-  theme_bw()
-# 9 x 8
+
+# bm: stopped here :)
+# time to work on the summary tables below and then Phat plots :) 
 
 
 #################### ** TABLES FOR PAPER: HIGH-LEVEL SUMMARY OF INFERENCE AND POINT ESTIMATE RESULTS ####################
