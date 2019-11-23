@@ -120,6 +120,8 @@ navbarPage( "Explore simulation results", id = "navbar",
                       
                       wellPanel(
                         h3("Summary across your chosen scenarios"),
+                        "Values are means across your chosen scenarios.",
+                        headerPanel(""),  # just for whitespace
                         tableOutput("table2") ),
                       
                       wellPanel(
@@ -183,6 +185,8 @@ navbarPage( "Explore simulation results", id = "navbar",
             
             wellPanel(
               h3("Summary across your chosen scenarios"),
+              "Values are means across your chosen scenarios.",
+              headerPanel(""),  # just for whitespace
               tableOutput("table4") ),
             
             wellPanel(
