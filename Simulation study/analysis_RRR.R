@@ -129,7 +129,7 @@ levels(agg1$dist.pretty)
 varying = c("k", 
             "V",
             "minN",
-            "N.orig",
+            #"N.orig",
             "TheoryP",
             "true.effect.dist")
 
@@ -152,7 +152,7 @@ agg2$N.tot = agg2$minN * agg2$k  # only works when minN = muN
 agg2$k.pretty = paste( "No. replications:", agg2$k )
 agg2$N.tot.pretty = paste( "N = ", agg2$N.tot )
 agg2$minN.pretty = paste( "N per replication = ", agg2$minN )
-agg2$Norig.pretty = paste( "N original = ", agg2$N.orig )
+#agg2$Norig.pretty = paste( "N original = ", agg2$N.orig )
 agg2$V.pretty = paste( "V = ", agg2$V )
 agg2$TheoryP.pretty = paste( "True P = ",
                             format(round(agg2$TheoryP, 2), nsmall = 2) )

@@ -15,17 +15,17 @@ library(dplyr)
 options(shiny.sanitize.errors = FALSE)
 
 agg1 = read.csv("agg1_porig.csv")
-
+agg2 = read.csv("agg2_phat.csv")
 
 # functions
-
-subset_data = function(input) {
+subset_agg1 = function(input) {
   data = agg1
   
+  # successively subset on each variable
   if ( !is.null(input$k) ) {
     data <- data[data$k %in% input$k,]
   }
-  
+
   if ( !is.null(input$Norig) ) {
     data <- data[data$N.orig %in% input$Norig,]
   }
@@ -46,3 +46,30 @@ subset_data = function(input) {
   }
   data
 }
+
+
+
+subset_agg2 = function(input) {
+  data = agg2
+  
+  # successively subset on each variable
+  if ( !is.null(input$k2) ) {
+    data <- data[data$k %in% input$k2,]
+  }
+  if ( !is.null(input$minN2) ) {
+    data <- data[data$minN %in% input$minN2,]
+  }
+  if ( !is.null(input$V2) ) {
+    data <- data[data$V %in% input$V2,]
+  }
+  if ( !is.null(input$dist2) ) {
+    data <- data[data$dist.pretty %in% input$dist2,]
+  }
+  if ( !is.null(input$TheoryP2) ) {
+    data <- data[data$TheoryP %in% input$TheoryP2,]
+  }
+  data
+}
+
+
+
