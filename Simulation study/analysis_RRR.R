@@ -17,9 +17,11 @@ library(ggplot2)
 library(data.table)
 
 # directories
-code.dir = "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study"
-data.dir =  "~/Desktop"
-results.dir = "~/Desktop"
+root.dir = "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)"
+data.dir =  "~/Desktop"  # ~~~ update me later
+code.dir = paste(root.dir, "Other RRR code (git)/Simulation study", sep="/")
+results.dir = paste(root.dir, "Simulation study results/Simulated distributions", sep="/")
+results.dist.dir = paste(root.dir, "Simulation study results/Simulated distributions", sep="/")
 
 # helper fn
 setwd(code.dir)
@@ -142,6 +144,7 @@ agg2 = as.data.frame( s %>%
                         summarise( n = n(),
                                    Phat.mn = mean(phat),
                                    Phat.bias.mn = mean(phatBias),
+                                   Phat.absbias.mn = mean( abs(phatBias) ), # ~~~ bm: thinking about whether this is right
                                    Phat.bt.med.mn = mean(phat.bt.med),
                                    Cover.mn = mean(Cover, na.rm = TRUE),
                                    EmpVar = var(phat),
@@ -318,11 +321,74 @@ m = lrm( as.formula(string),
 
 
 
-# bm: stopped here :)
-# time to work on the summary tables below and then Phat plots :) 
+
+#################### PHAT PLOTS ####################
+
+##### Plot: Coverage ######
+# not interesting since it's always very high
+plot_group(.y.name = "Cover.mn",
+           .ylab = "Coverage",
+           .data = agg2,
+           .limits = c(0.85,1),
+           .breaks = seq(0.85,1,.05))
+
+# **Min coverage for k >= 10
+agg2 %>% filter( k >= 10 ) %>%
+  summarise( min(Cover.mn) )
 
 
-# #################### ** TABLES FOR PAPER: HIGH-LEVEL SUMMARY OF INFERENCE AND POINT ESTIMATE RESULTS ####################
+##### **Plot 3: Bias #####
+plot_group(.y.name = "Phat.bias.mn",
+           .ylab = "Bias",
+           .data = agg2,
+           .limits = c(-0.1, .4))
+
+# absolute bias
+plot_group(.y.name = "Phat.absbias.mn",
+           .ylab = "Absolute bias",
+           .data = agg2,
+           .limits = c(-0.1, .4))
+
+
+##### **Plot 4: RMSE #####
+plot_group(.y.name = "RMSE",
+           .ylab = "RMSE",
+           .data = agg2,
+           .limits = c(0, .5))
+
+
+#################### ** TABLES FOR PAPER: HIGH-LEVEL SUMMARY OF INFERENCE AND POINT ESTIMATE RESULTS ####################
+
+#####  ***Porig Summary #####
+
+Porig.table = agg1 %>%
+  filter( k >= 10 ) %>%
+  group_by(dist.pretty, V, minN, delta) %>%
+  summarise( Reject = round( mean(Reject.mn), 3 ),
+             Reject.max = round( max(Reject.mn), 3 ) ) 
+View(Porig.table)
+
+#####  ***Phat Summary #####
+Phat.table = agg2 %>%
+  filter(k >= 10) %>%
+  group_by(dist.pretty, V, minN) %>%
+  summarise( 
+    Mean.Bias = round( mean(Phat.bias.mn), digits = 3),
+    Mean.Abs.Bias = round( mean(Phat.absbias.mn), digits = 3),  # abs value, then mean
+    #Mean.Abs.Bias2 = round( mean(abs(Phat.bias.mn)), digits = 3 ),  # mean bias within scenario, then abs valute
+    Mean.RMSE = round( mean(RMSE), digits = 3 ) )
+View(Phat.table)
+
+library(xtable)
+print( xtable(Phat.table), include.rownames = FALSE )
+
+
+
+
+
+
+
+
 # 
 # ##### Inference Summary #####
 # inf.table = agg %>%
@@ -337,87 +403,101 @@ m = lrm( as.formula(string),
 # library(xtable)
 # print( xtable(inf.table), include.rownames = FALSE )
 # 
-# ##### Point Estimates Summary #####
-# est.table = agg %>%
-#   group_by(true.effect.dist, V) %>%
-#   summarise( #Mean.RMSE = MetaUtility::format_stat( mean(RMSE), digits = 3 ),
-#              Mean.Abs.Bias = MetaUtility::format_stat( mean(abs(phatBias.mn)), digits = 3 ) )
-# View(est.table)
-# 
-# library(xtable)
-# print( xtable(est.table), include.rownames = FALSE )
-# 
-# 
-# 
-# 
-# 
 
 
-#################### PHAT PLOTS ####################
 
 
-# # scenario parameters that vary
-# varying = c("k", 
-#             "V",
-#            # "minN",  # ~~~ averaging over these
-#           #  "muN",
-#             "TheoryP",
-#             "delta",
-#             "N.orig",
-#             "true.effect.dist",
-#             "sd.w")
-# 
-# # ".dots" argument allows passing a vector of variable names
-# agg2 = as.data.frame( s %>% group_by(.dots = varying) %>%
-#                        summarise( phat.mn = mean(phat),
-#                                   phatBias.mn = mean(phatBias),
-#                                   Cover.mn = mean(Cover, na.rm=TRUE),
-#                                   #Width.mn = mean(Width),
-#                                   Porig.mn = mean(Porig),
-#                                   Reject.mn = mean(Reject),
-#                                   I2.mn = mean(EstI2) ) )
-# 
-# 
-# 
-# # for plotting joy
-# agg2$k.pretty = paste( "No. replications:", agg2$k )
-# agg2$muN.pretty = paste( "E[N] = ", agg2$muN )
-# agg2$N.orig.pretty = paste( "Norig = ", agg2$N.orig )
-# agg2$delta.pretty = paste( "delta = ", agg2$delta )
-# agg2$V.pretty = paste( "V = ", agg2$V )
-# agg2$TheoryP.pretty = paste( "True P = ",
-#                             format(round(agg2$TheoryP, 2), nsmall = 2) )
-# 
-# agg2$dist.pretty = NA
-# agg2$dist.pretty[ agg2$true.effect.dist == "normal" ] = "Normal"
-# agg2$dist.pretty[ agg2$true.effect.dist == "expo" ] = "Exponential"
-# agg2$dist.pretty[ agg2$true.effect.dist == "t.scaled" ] = "t"
-# agg2$dist.pretty[ agg2$true.effect.dist == "unif2" ] = "Uniform mixture"
+#################### PLOT EXAMPLE DATA FROM EACH DIST ####################
 
-##### Table: Coverage ######
-# not interesting since it's always very high
-plot_group(.y.name = "Cover.mn",
-           .ylab = "Coverage",
-           .data = agg2,
-           .limits = c(0.85,1),
-           .breaks = seq(0.85,1,.05))
+# should we run this part again?
+simulate.dist.from.scratch = TRUE
 
-# **Min coverage for k >= 10
-agg2 %>% filter( k >= 10 ) %>%
-  summarise( min(Cover.mn) )
+  
+vec = c("normal", "expo", "unif2", "t.scaled")
+vec2 = c(0.25, 0.01, 0.002)
 
-##### **Plot 3: Bias #####
-plot_group(.y.name = "Phat.bias.mn",
-           .ylab = "Bias",
-           .data = agg2,
-           .limits = c(-0.1, .4))
+params = as.data.frame( expand.grid(vec, vec2) )
+names(params) = c("dist", "V")
+
+if ( simulate.dist.from.scratch == TRUE ) {
+  sims = apply( params,
+                MARGIN = 1, 
+                FUN = function(row) {
+                  d = sim_data( k = 1000,
+                                mu = 0.5,
+                                V = as.numeric(row[["V"]]),
+                                muN = 5,  # tiny sample sizes fine because we're only using the true effects
+                                minN = 5,
+                                sd.w = 1,
+                                true.effect.dist = row[["dist"]])
+                  d$true.effect.dist = row[["dist"]]
+                  d$V = as.numeric(row[["V"]])
+                  return(d)
+                } )
+  
+  sims = do.call(rbind, sims)
+  setwd(results.dist.dir)
+  write.csv(sims, 
+            "simulated_density_data.csv",
+            row.names = FALSE)
+} else {
+  setwd(results.dist.dir)
+  sims = read.csv("simulated_density_data.csv")
+}
+
+# for plotting joy
+sims$dist.pretty = "Normal"
+sims$dist.pretty[ sims$true.effect.dist == "expo"] = "Exponential"
+sims$dist.pretty[ sims$true.effect.dist == "t.scaled"] = "t"
+sims$dist.pretty[ sims$true.effect.dist == "unif2"] = "Uniform mixture"
+sims$dist.pretty = factor(sims$dist.pretty, 
+                          levels = c("Normal",
+                                     "Exponential",
+                                     "t",
+                                     "Uniform mixture"))
+
+# for plotting joy
+sims$V.pretty = paste( expression(tau^2), " = ", sims$V,
+                       sep = "")
+
+# make density plot
+ggplot( data = sims,
+        aes(x = Mi,
+            fill = dist.pretty)) +
+  #geom_histogram(bins=20) +
+  geom_vline(xintercept = 0.5, color = "gray") +
+  geom_density(adjust=.5) +
+  theme_bw() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        # last two arguments remove gridlines
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  scale_x_continuous(breaks = seq(-0.5, 1.5, .5),
+                     limits = c(-0.5, 1.5)) +
+  facet_grid(dist.pretty ~ V.pretty) +
+  xlab( bquote(theta['rep,i']) ) +
+  ylab("") +
+  labs(fill = "")
+# 11 x 8 works well
+
+# # sanity check
+# # since t looks just like normal visually, confirm via Shapiro that 
+# #  it really is different
+# sims %>% filter(dist.pretty == "Normal") %>%
+#   group_by(V) %>% 
+#   summarise( shapiro.p = shapiro.test(Mi)$p.value )
+# # works :) 
 
 
-##### **Plot 4: RMSE #####
-plot_group(.y.name = "RMSE",
-           .ylab = "RMSE",
-           .data = agg2,
-           .limits = c(0, .5))
+
+
+
+
+
+
+
+
 
 
 
