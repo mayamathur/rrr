@@ -17,8 +17,9 @@
 update_result_csv = function( name,
                               section = NA,
                               value = NA,
-                              print = FALSE ) {
-  setwd(results.dir)
+                              print = FALSE,
+                              .results.dir = results.dir ) {
+  setwd(.results.dir)
   
   new.rows = data.frame( name,
                          value = as.character(value),
@@ -64,6 +65,136 @@ r_to_z = Vectorize( function(r) {
 z_to_r = Vectorize( function(z) {
   ( exp( 2 * z ) - 1 ) / ( exp( 2 * z ) + 1 )
 }, vectorize.args = "z" )
+
+
+
+
+################################ FNs FOR DIAGNOSTIC PLOTS ################################ 
+
+# see section 3.11 of Veroniki (from Raudenbush 2009)
+t2_lkl = function( yi, vi, t2, yi.orig, vi.orig ) {
+  k = length(yi)
+  wi = 1 / ( vi + t2 )
+  
+  # calculate the RE Mhat based on this particular t2
+  Mhat = sum(yi * wi) / sum(wi)
+  
+  term1 = (k/2) * log(2*pi)
+  term2 = 0.5 * sum( log(vi + t2) )
+  term3 = 0.5 * sum( ( yi - Mhat )^2 / ( vi + t2 ) )
+  term4 = 0.5 * log( sum( 1 / ( vi + t2 ) ) )
+  
+  return( -term1 - term2 - term3 - term4 )
+}
+
+
+diag_plots = function(yi, vi, yi.orig, vi.orig) {
+  
+  # fit meta-analysis
+  .m = rma.uni( yi = yi,
+                vi = vi,
+                knha = TRUE ) 
+  
+  ##### Make Plotting Dataframe with Different Tau^2 #####
+  t2.vec = seq(0, .m$tau2*10, .001)
+  t2l = as.list(t2.vec)
+  
+  temp = lapply( t2l,
+                 FUN = function(t2) {
+                   suppressMessages( p_orig( orig.y = yi.orig,
+                                             orig.vy = vi.orig,
+                                             yr = .m$b,
+                                             t2 = t2,
+                                             vyr = .m$vb ) )
+                 })
+  
+  # plotting df
+  dp = data.frame( tau = sqrt(t2.vec),
+                   V = t2.vec,
+                   Porig = unlist(temp) )
+  
+  
+  # fn: tau^2 vs. the estimated one
+  g = function(x) x / .m$tau2
+  ( breaks.x1 = seq( 0, max(dp$V), .005 ) )
+  ( breaks.x2 = seq( 0, max( g(dp$V) ), 1 ) )
+  
+  ##### **Plot 1: Tau^2 vs. Porig #####
+  p1 = ggplot( data = dp,
+               aes(x = V, 
+                   y = Porig) ) +
+    
+    geom_vline(xintercept = .m$tau2,
+               lty = 2,
+               color = "red") +  # observed one
+    
+    geom_line(lwd = 1.2) +
+    theme_classic() +
+    xlab( bquote( hat(tau)["*"]^2 ) ) +
+    ylab( bquote(P[orig]) ) +
+    scale_x_continuous( limits = c(0, max(breaks.x1)),
+                        breaks = breaks.x1,
+                        sec.axis = sec_axis( ~ g(.),  # confounding strength axis
+                                             name = bquote( hat(tau)["*"]^2 / hat(tau)^2 ),
+                                             breaks=breaks.x2 ) ) +
+    scale_y_continuous( breaks = seq(0,1,.05) )
+  # 6 x 4
+  
+  ##### **Plot 2: Tau^2 vs. Mhat/Tau^2 ##### 
+  p2 = ggplot( data = dp,
+               aes(x = V, 
+                   y = .m$b / V ) ) +
+    
+    geom_vline(xintercept = .m$tau2,
+               lty = 2,
+               color = "red") +  # observed one
+    
+    geom_line(lwd = 1.2) +
+    theme_classic() +
+    xlab( bquote( hat(tau)["*"]^2 ) ) +
+    ylab( bquote( hat(mu) / hat(tau)["*"]^2 ) ) +
+    scale_x_continuous( limits = c(0, max(breaks.x1)),
+                        breaks = breaks.x1,
+                        sec.axis = sec_axis( ~ g(.),  # confounding strength axis
+                                             name = bquote( hat(tau)["*"]^2 / hat(tau)^2 ),
+                                             breaks=breaks.x2 ) ) +
+    scale_y_continuous( breaks = seq(0,80,10) )
+  # 6 x 4
+  
+  ##### **Plot 3: Marginal Log-Lkl of Tau^2 ##### 
+  temp = lapply( t2l,
+                 FUN = function(t2) {
+                   t2_lkl( yi = yi,
+                           vi = vi,
+                           t2 = t2 )
+                 })
+  
+  # plotting df
+  dp = data.frame( tau = sqrt(t2.vec),
+                   V = t2.vec,
+                   lkl = unlist(temp) )
+  
+  p3 = ggplot( data = dp,
+               aes(x = V, 
+                   y = lkl ) ) +
+    
+    geom_vline(xintercept = .m$tau2,
+               lty = 2,
+               color = "red") +  # observed one
+    
+    geom_line(lwd = 1.2) +
+    theme_classic() +
+    xlab( bquote( hat(tau)["*"]^2 ) ) +
+    ylab( "Marginal log-likelihood of " ~ hat(tau)["*"]^2 ) +
+    scale_x_continuous( limits = c(0, max(breaks.x1)),
+                        breaks = breaks.x1,
+                        sec.axis = sec_axis( ~ g(.),  # confounding strength axis
+                                             name = bquote( hat(tau)["*"]^2 / hat(tau)^2 ),
+                                             breaks=breaks.x2 ) )
+  
+  return( list(p1, p2, p3) )
+  
+}
 
 
 

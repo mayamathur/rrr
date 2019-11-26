@@ -3,17 +3,22 @@
 
 ############################# LOAD FUNCTIONS AND DATA ############################# 
 
+library(MetaUtility)
+library(metafor)
+library(ggplot2)
+
 code.dir = "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Applied example"
 data.dir = "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Applied example data"
-#results.dir = 
-results.overleaf = "/Users/mmathur/Dropbox/Apps/Overleaf/JRSSA_2\ RRR\ Response\ Letter/R_objects/stats_for_paper.csv"
+# write results straight to Overleaf
+results.dir = "~/Dropbox/Apps/Overleaf/RRR Manuscript (JRSSA_2)/R_objects"
 
+setwd(code.dir)
 source("functions_applied_RRR.R")
 
 # read in ML3 data
 # to reproduce, use the Credentials file in OSF repo
 setwd(data.dir)
-d = read.csv( "Credentials.csv" ), header = TRUE )
+d = read.csv( "Credentials.csv", header = TRUE )
 
 # bootstrap from scratch or read in existing results for reproducibility?
 rerun.Phat.from.scratch = FALSE
@@ -42,7 +47,6 @@ orig.SE = ( r_to_z( sqrt( orig.hi.eta2 ) ) - r_to_z( sqrt( orig.eta2 ) ) ) / qno
 orig.pval = 2 * ( 1 - pnorm( orig.fis / orig.SE ) )
 
 
-setwd(results.overleaf)
 update_result_csv( "Orig Fisher",
                    section = 1,
                    value = round( orig.fis, 2 ),
@@ -81,7 +85,6 @@ d$vi = d$main.SE^2
 
 ############################# 3. META-ANALYZE MORAL CREDENTIALING DATA ############################# 
 
-library(metafor)
 m = rma.uni( yi = d$main.fis,
              vi = main.SE^2,
              data = d,
@@ -219,8 +222,39 @@ update_result_csv( "Porig no het",
                    print = FALSE )
 
 
-############################# 7. NEW METRIC #2: PROPORTION EFFECT SIZES ABOVE THRESHOLD ############################# 
+############################# DIAGNOSTIC PLOTS FOR PORIG ############################# 
 
+# ~~~ CHECK THE UNDERLYING CODE HERE
+plots = diag_plots( yi = d$main.fis,
+                    vi = d$vi,
+                    yi.orig = orig.fis,
+                    vi.orig = orig.SE^2)
+# 6 x 4 for each plot
+
+# with fewer replications to illustrate
+plots2 = diag_plots( yi = d$main.fis[1:3],
+                     vi = d$vi[1:3],
+                     yi.orig = orig.fis,
+                     vi.orig = orig.SE^2)
+
+# with lots of replications
+source("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study/functions_RRR.R")
+fake = sim_data( k = 500,
+                 mu = m$b,
+                 V = 0.001,
+                 muN = round( mean(d$NT) ),
+                 minN = min(d$NT),
+                 sd.w = 1,  # ~~~ update this
+                 true.effect.dist = "normal"
+                 )
+
+plots2 = diag_plots( yi = fake$yi,
+                     vi = fake$vyi,
+                     yi.orig = orig.fis,
+                     vi.orig = orig.SE^2)
+
+
+############################# 7. NEW METRIC #2: PROPORTION EFFECT SIZES ABOVE THRESHOLD ############################# 
 
 ###### P>0 #####
 # CI limits may change a bit with different bootstrapping iterates
