@@ -130,12 +130,12 @@ diag_plots = function(yi, vi, yi.orig, vi.orig) {
     
     geom_line(lwd = 1.2) +
     theme_classic() +
-    xlab( bquote( hat(tau)["*"]^2 ) ) +
+    xlab( bquote( tau["*"]^2 ) ) +
     ylab( bquote(P[orig]) ) +
     scale_x_continuous( limits = c(0, max(breaks.x1)),
                         breaks = breaks.x1,
                         sec.axis = sec_axis( ~ g(.),  # confounding strength axis
-                                             name = bquote( hat(tau)["*"]^2 / hat(tau)^2 ),
+                                             name = bquote( tau["*"]^2 / hat(tau)^2 ),
                                              breaks=breaks.x2 ) ) +
     scale_y_continuous( breaks = seq(0,1,.05) )
   # 6 x 4
@@ -151,12 +151,12 @@ diag_plots = function(yi, vi, yi.orig, vi.orig) {
     
     geom_line(lwd = 1.2) +
     theme_classic() +
-    xlab( bquote( hat(tau)["*"]^2 ) ) +
-    ylab( bquote( hat(mu) / hat(tau)["*"]^2 ) ) +
+    xlab( bquote( tau["*"]^2 ) ) +
+    ylab( bquote( hat(mu) / tau["*"]^2 ) ) +
     scale_x_continuous( limits = c(0, max(breaks.x1)),
                         breaks = breaks.x1,
                         sec.axis = sec_axis( ~ g(.),  # confounding strength axis
-                                             name = bquote( hat(tau)["*"]^2 / hat(tau)^2 ),
+                                             name = bquote( tau["*"]^2 / hat(tau)^2 ),
                                              breaks=breaks.x2 ) ) +
     scale_y_continuous( breaks = seq(0,80,10) )
   # 6 x 4
@@ -164,9 +164,17 @@ diag_plots = function(yi, vi, yi.orig, vi.orig) {
   ##### **Plot 3: Marginal Log-Lkl of Tau^2 ##### 
   temp = lapply( t2l,
                  FUN = function(t2) {
+                   # log-lkl itself
                    t2_lkl( yi = yi,
                            vi = vi,
                            t2 = t2 )
+                   
+                   # lkl ratio vs. the MLE
+                   exp( t2_lkl( yi = yi,
+                           vi = vi,
+                           t2 = t2 ) ) / exp( t2_lkl( yi = yi,
+                                                      vi = vi,
+                                                      t2 = .m$tau2 ) )
                  })
   
   # plotting df
@@ -184,13 +192,15 @@ diag_plots = function(yi, vi, yi.orig, vi.orig) {
     
     geom_line(lwd = 1.2) +
     theme_classic() +
-    xlab( bquote( hat(tau)["*"]^2 ) ) +
-    ylab( "Marginal log-likelihood of " ~ hat(tau)["*"]^2 ) +
+    xlab( bquote( tau["*"]^2 ) ) +
+    ylab( "Marginal likelihood ratio of " ~ tau["*"]^2 ~ " vs. " ~ hat(tau)^2 ) +
     scale_x_continuous( limits = c(0, max(breaks.x1)),
                         breaks = breaks.x1,
                         sec.axis = sec_axis( ~ g(.),  # confounding strength axis
-                                             name = bquote( hat(tau)["*"]^2 / hat(tau)^2 ),
-                                             breaks=breaks.x2 ) )
+                                             name = bquote( tau["*"]^2 / hat(tau)^2 ),
+                                             breaks=breaks.x2 ) ) +
+    scale_y_continuous( limits = c(0,1),
+                        breaks = seq(0,1,.1) )
   
   return( list(p1, p2, p3) )
   

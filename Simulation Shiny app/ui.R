@@ -94,7 +94,7 @@ navbarPage( "Explore simulation results", id = "navbar",
                                           
                                           checkboxGroupInput( "delta", label = "Delta (standardized mean difference between replication true mean and original true effect)",
                                                               choices = unique(as.character(agg1$delta) ),
-                                                              selected = unique(as.character(agg1$delta) ) )
+                                                              selected = "0" )
                                           
                                           
                                           

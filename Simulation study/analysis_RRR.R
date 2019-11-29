@@ -1,11 +1,4 @@
 
-# Plots to create for paper: 
-# - Rejection rate of Porig by delta (4 plots)
-# - Coverage: Just quick stats
-# - RMSE of Phat
-# - Bias of Phat
-
-
 # Note: "**" denotes key results reported in paper
 
 # avoid saving old copies of objects
@@ -18,9 +11,12 @@ library(data.table)
 
 # directories
 root.dir = "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)"
-data.dir =  "~/Desktop"  # ~~~ update me later
+data.dir =  "~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Simulation study results/2019-11-26"
 code.dir = paste(root.dir, "Other RRR code (git)/Simulation study", sep="/")
-results.dir = paste(root.dir, "Simulation study results/Simulated distributions", sep="/")
+
+# three different places to save results
+results.dir = paste(root.dir, "Simulation study results/2019-11-26", sep="/")
+results.overleaf = "~/Dropbox/Apps/Overleaf/RRR Manuscript (JRSSA_2)/R_objects"
 results.dist.dir = paste(root.dir, "Simulation study results/Simulated distributions", sep="/")
 
 # helper fn
@@ -30,13 +26,13 @@ source("functions_RRR.R")  # for sim_data
 
 
 setwd(data.dir)
-s = as.data.frame( fread("stitched.csv") )
-# s1 = as.data.frame( fread("stitched_1.csv") )
-# s2 = as.data.frame( fread("stitched_2.csv") )
+# s = as.data.frame( fread("stitched.csv") )
+s1 = as.data.frame( fread("stitched1.csv") )
+s2 = as.data.frame( fread("stitched2.csv") )
 # s3 = as.data.frame( fread("stitched_3.csv") )
 # # reorder latter's rows to match s1
 # s2 = s2[ , names(s1) ]
-# s = rbind(s1, s2)
+s = rbind(s1, s2)
 dim(s)
 
 
@@ -62,11 +58,10 @@ sim.summ = as.data.frame( s %>% group_by(scen.name, POrig.Method) %>%
   arrange(sim.reps)
 
 summary(sim.summ$sim.reps)
-# ~~~ 32% of scenarios have fewer than the desired number of reps - why?
+# almost zero scenarios have fewer than the desired number of reps
 mean(sim.summ$sim.reps<1024)
 
-# ** run more iterates for these
-need.more = sim.summ$scen.name[ sim.summ$sim.reps < 1024 ]
+
 
 #################### MAKE 2 AGGREGATED DATASETS ####################
 
@@ -116,7 +111,7 @@ agg1$k.pretty = paste( "No. replications:", agg1$k )
 agg1$N.tot.pretty = paste( "N = ", agg1$N.tot )
 agg1$N.orig.pretty = paste( "Norig = ", agg1$N.orig )
 agg1$delta.pretty = paste( "delta = ", agg1$delta )
-agg1$V.pretty = paste( "V = ", agg1$V )
+agg1$V.pretty = paste( "tau^2 = ", agg1$V )
 
 agg1$dist.pretty = NA
 agg1$dist.pretty[ agg1$true.effect.dist == "normal" ] = "Normal"
@@ -151,19 +146,22 @@ agg2 = as.data.frame( s %>%
                         summarise( n = n(),
                                    Phat.mn = mean(phat),
                                    Phat.bias.mn = mean(phatBias),
-                                   Phat.absbias.mn = mean( abs(phatBias) ), # ~~~ bm: thinking about whether this is right
-                                   Phat.bt.med.mn = mean(phat.bt.med),
+                                   Phat.absbias.mn = mean( abs(phatBias) ), 
+                                   Phat.rel.bias.mn = mean( phatBias / TheoryP ),
+                                   Phat.bt.med.mn = mean(phat.bt.med, na.rm=TRUE),
+                                   Phat.bt.bias.mn = mean(phat.bt.med - phat, na.rm=TRUE),
                                    Cover.mn = mean(Cover, na.rm = TRUE),
                                    EmpVar = var(phat),
                                    RMSE = sqrt(EmpVar + Phat.bias.mn^2) ) )
+
 
 # for plotting joy
 agg2$N.tot = agg2$minN * agg2$k  # only works when minN = muN
 agg2$k.pretty = paste( "No. replications:", agg2$k )
 agg2$N.tot.pretty = paste( "N = ", agg2$N.tot )
-agg2$minN.pretty = paste( "N per replication = ", agg2$minN )
+agg2$minN.pretty = paste( agg2$minN )
 #agg2$Norig.pretty = paste( "N original = ", agg2$N.orig )
-agg2$V.pretty = paste( "V = ", agg2$V )
+agg2$V.pretty = paste( "tau^2 = ", agg2$V )
 agg2$TheoryP.pretty = paste( "True P = ",
                             format(round(agg2$TheoryP, 2), nsmall = 2) )
 
@@ -219,9 +217,12 @@ write.csv( agg2, "agg2_phat.csv", row.names = FALSE )
 #   facet_wrap(~ N.orig + V.pretty) +
 #   theme_bw()
 
+
+
+
 ##### **Plot 1: Type I Error for All Distributions #####
 shapes = c(69, 78, 84, 85)  # letters for distributions
-colors = c("black", "orange")
+colors = c("black", "darkorange")
 library(ggplot2)
 ggplot( data = agg1 %>% filter(delta == 0 & POrig.Method == "reml"),
         aes(x = k,
@@ -240,29 +241,14 @@ ggplot( data = agg1 %>% filter(delta == 0 & POrig.Method == "reml"),
                      name = "Sample size in each replication") +
   scale_y_continuous( limits = c(0,.13),
                       breaks = seq(0,.13,.01)) +
-  ylab("Mean rejection rate") +
+  ylab("Mean Type I error") +
   xlab("Number of replications") + 
   #facet_wrap(~ dist.pretty + V.pretty, nrow=4) +
   facet_grid(dist.pretty ~ V.pretty) +
   theme_bw()
+
+save_plot("plot1_typeI.pdf")
 # 11 x 11
-
-# # with distributions on the x-axis
-# library(ggplot2)
-# ggplot( data = agg1[agg1$delta == 0,],
-#         aes(x = dist.pretty,
-#             y = Reject.mn,
-#             color = k.pretty,
-#             shape = as.factor(minN) ) ) +
-#   geom_point(size=2) +
-#   #geom_line() +
-#   geom_hline(yintercept = 0.05,
-#              color = "red",
-#              lty = 2) +
-#   #scale_shape_manual(values = shapes) +
-#   facet_wrap(~ TheoryP.pretty + V.pretty) +
-#   theme_bw()
-
 
 
 #################### POWER (DELTA > 0) ####################
@@ -272,7 +258,7 @@ ggplot( data = agg1 %>% filter(delta == 0 & POrig.Method == "reml"),
 #shapes = c(69, 78, 84, 85)
 
 # break in two for legibility (2 distributions each)
-colors = c("black", "orange")
+colors = c("black", "darkorange")
 library(ggplot2)
 ggplot( data = agg1 %>% filter(delta > 0 & POrig.Method == "reml" & dist.pretty %in% c("Normal", "Exponential")),
         aes(x = k,
@@ -282,9 +268,6 @@ ggplot( data = agg1 %>% filter(delta > 0 & POrig.Method == "reml" & dist.pretty 
         ) ) +
   geom_point(size=2) +
   geom_line() +
-  geom_hline(yintercept = 0.05,
-             color = "red",
-             lty = 2) +
   scale_shape_manual(values = c(1,2,3,4),
                      name = "Sample size in original") +
   scale_color_manual(values = colors,
@@ -305,9 +288,6 @@ ggplot( data = agg1 %>% filter(delta > 0 & POrig.Method == "reml" & dist.pretty 
         ) ) +
   geom_point(size=2) +
   geom_line() +
-  geom_hline(yintercept = 0.05,
-             color = "red",
-             lty = 2) +
   scale_shape_manual(values = c(1,2,3,4),
                      name = "Sample size in original") +
   scale_color_manual(values = colors,
@@ -360,14 +340,9 @@ agg1 %>% filter( delta == 0 &
 #################### PHAT PLOTS ####################
 
 ##### Plot: Coverage ######
-# not interesting since it's always very high
-plot_group(.y.name = "Cover.mn",
-           .ylab = "Coverage",
-           .data = agg2,
-           .limits = c(0.85,1),
-           .breaks = seq(0.85,1,.05))
+# not interesting to plot since it's always very high
 
-# **Min coverage for k >= 10
+# **Min coverage for k >= 10: 94%
 agg2 %>% filter( k >= 10 ) %>%
   summarise( min(Cover.mn) )
 
@@ -416,19 +391,27 @@ Porig.table = agg1 %>%
              Reject.max = round( max(Reject.mn), 3 ) ) 
 View(Porig.table)
 
+library(xtable)
+print( xtable(Porig.table,
+              digits = c(3,3,3,2,2,2)),
+       include.rownames = FALSE )
+
 #####  ***Phat Summary #####
 Phat.table = agg2 %>%
   filter(k >= 10) %>%
   group_by(dist.pretty, V, minN) %>%
   summarise( 
     Mean.Bias = round( mean(Phat.bias.mn), digits = 3),
+    #Mean.RelBias = round( mean(Phat.rel.bias.mn), digits = 3 ),
     #Mean.Abs.Bias = round( mean(Phat.absbias.mn), digits = 3),  # abs value, then mean
     #Mean.Abs.Bias2 = round( mean(abs(Phat.bias.mn)), digits = 3 ),  # mean bias within scenario, then abs valute
     Mean.RMSE = round( mean(RMSE), digits = 3 ) )
 View(Phat.table)
 
 library(xtable)
-print( xtable(Phat.table), include.rownames = FALSE )
+print( xtable(Phat.table,
+              digits = c(3,3,3,2,2,2)),
+include.rownames = FALSE )
 
 
 

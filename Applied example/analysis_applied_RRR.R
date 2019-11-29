@@ -3,7 +3,12 @@
 
 ############################# LOAD FUNCTIONS AND DATA ############################# 
 
+# for reverse-compatibility, use the older version of MetaUtility (some arguments were renamed)
+library(devtools)
+install_version("MetaUtility", version = "2.0.0", repos = "http://cran.us.r-project.org")
+
 library(MetaUtility)
+library(Replicate)
 library(metafor)
 library(ggplot2)
 
@@ -47,9 +52,9 @@ orig.SE = ( r_to_z( sqrt( orig.hi.eta2 ) ) - r_to_z( sqrt( orig.eta2 ) ) ) / qno
 orig.pval = 2 * ( 1 - pnorm( orig.fis / orig.SE ) )
 
 
-update_result_csv( "Orig Fisher",
+update_result_csv( "Orig r",
                    section = 1,
-                   value = round( orig.fis, 2 ),
+                   value = round( z_to_r(orig.fis), 2 ),
                    print = FALSE )
 update_result_csv( "Orig SE",
                    section = 1,
@@ -229,13 +234,14 @@ plots = diag_plots( yi = d$main.fis,
                     vi = d$vi,
                     yi.orig = orig.fis,
                     vi.orig = orig.SE^2)
-# 6 x 4 for each plot
+# 6 x 6 for each plot
 
 # with fewer replications to illustrate
 plots2 = diag_plots( yi = d$main.fis[1:3],
                      vi = d$vi[1:3],
                      yi.orig = orig.fis,
                      vi.orig = orig.SE^2)
+# plots2[[3]] is the hypothetical example in Panel D
 
 # with lots of replications
 source("~/Dropbox/Personal computer/Independent studies/RRR estimators/Linked to OSF (RRR)/Other RRR code (git)/Simulation study/functions_RRR.R")

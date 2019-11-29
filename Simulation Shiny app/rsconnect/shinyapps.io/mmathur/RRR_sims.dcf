@@ -1,0 +1,12 @@
+name: RRR_sims
+title: RRR_sims
+username:
+account: mmathur
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1530250
+bundleId: 2620254
+url: https://mmathur.shinyapps.io/RRR_sims/
+when: 1574802984.21976
+asMultiple: FALSE
+asStatic: FALSE

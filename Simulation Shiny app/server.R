@@ -86,6 +86,9 @@ function(input, output, session) {
 
     t2 = data %>% summarise( `Number of scenarios` = n(),
                              `Phat bias` = round( mean(Phat.bias.mn), 3 ),
+                             `Max Phat bias` = round( max(Phat.bias.mn), 3 ),
+                             `Phat RMSE` = round( mean(Phat.bias.mn), 3 ),
+                             `Max Phat RMSE` = round( max(Phat.bias.mn), 3 ),
                              `Coverage` = round( mean(Cover.mn), 3 ),
                              `Min coverage` = round( min(Cover.mn), 3 )
     )

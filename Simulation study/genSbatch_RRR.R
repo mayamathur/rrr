@@ -109,10 +109,13 @@ for (i in 1:4320) {
 
 ######## If Running Only Some Jobs To Fill Gaps ########
 
+# bm: run more to fill in gaps
 # run in Sherlock ml load R
 path = "/home/groups/manishad/RRR"
 setwd(path)
 source("functions_RRR.R")
+
+missed.nums = read.csv("need_more.csv")$need.more
 
 missed.nums = sbatch_not_run( "/home/groups/manishad/RRR/sim_results/long",
                               "/home/groups/manishad/RRR/sim_results",
@@ -125,3 +128,10 @@ setwd( paste(path, "/sbatch_files", sep="") )
 for (i in missed.nums) {
   system( paste("sbatch -p qsu,owners,normal /home/groups/manishad/RRR/sbatch_files/", i, ".sbatch", sep="") )
 }
+
+
+
+
+
+
+

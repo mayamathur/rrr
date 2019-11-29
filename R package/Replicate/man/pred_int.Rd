@@ -4,40 +4,40 @@
 \alias{pred_int}
 \title{Compute prediction interval for replication study given original}
 \usage{
-pred_int(orig.y, orig.vy, rep.y = NULL, rep.vy, level = 0.95)
+pred_int(yio, vio, yir = NULL, vir, level = 0.95)
 }
 \arguments{
-\item{orig.y}{Effect estimate in the original study. Can be a vector for multiple original studies.}
+\item{yio}{Effect estimate in the original study. Can be a vector for multiple original studies.}
 
-\item{orig.vy}{Estimated variance of effect estimate in the original study (i.e., its squared standard error).
+\item{vio}{Estimated variance of effect estimate in the original study (i.e., its squared standard error).
 Can be a vector for multiple original studies.}
 
-\item{rep.y}{Effect estimate in the replication study.
+\item{yir}{Effect estimate in the replication study.
 Can be a vector for multiple replication studies. Can be omitted, in which case function returns only the prediction
 interval.}
 
-\item{rep.vy}{Estimated variance of effect estimate in the replication study (i.e., its squared standard error).
+\item{vir}{Estimated variance of effect estimate in the replication study (i.e., its squared standard error).
 Can be a vector for multiple replication studies.}
 
 \item{level}{Coverage level of prediction interval. Typically 0.95.}
 }
 \description{
-Given effect estimates and their variances for one or multiple original studies and one or more replication studies, 
+Given point estimates and their variances for one or multiple original studies and one or more replication studies, 
 returns a vector stating whether each replication estimate is in its corresponding prediction interval. Assumes no heterogeneity.
 }
 \examples{
 # calculate prediction interval for a single replication study
-pred_int( orig.y = 1, orig.vy = .5, rep.y = 0.6,
-rep.vy = .2 )
+pred_int( yio = 1, vio = .5, yir = 0.6,
+vir = .2 )
 
 # calculate prediction intervals for a one-to-one design
-pred_int( orig.y = c(1, 1.3), orig.vy = c(.01, .6),
-rep.y = c(.6, .7), rep.vy = c(.01,.3) )
+pred_int( yio = c(1, 1.3), vio = c(.01, .6),
+yir = c(.6, .7), vir = c(.01,.3) )
 
-# no need to pass rep.y if you only want the intervals
-pred_int( orig.y = c(1, 1.3), orig.vy = c(.01, .6),
-rep.vy = c(.01,.3) )
+# no need to pass yir if you only want the intervals
+pred_int( yio = c(1, 1.3), vio = c(.01, .6),
+vir = c(.01,.3) )
 
 # calculate prediction intervals for a many-to-one design
-pred_int( orig.y = c(1), orig.vy = c(.01), rep.y = c(.6, .7), rep.vy = c(.01,.3) )
+pred_int( yio = c(1), vio = c(.01), yir = c(.6, .7), vir = c(.01,.3) )
 }

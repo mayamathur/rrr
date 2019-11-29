@@ -4,16 +4,15 @@
 \alias{prob_signif_agree}
 \title{Compute probability of "significance agreement" between replication and original study}
 \usage{
-prob_signif_agree(orig.y, orig.vy, rep.vy, t2 = 0, null = 0,
-  alpha = 0.05)
+prob_signif_agree(yio, vio, vir, t2 = 0, null = 0, alpha = 0.05)
 }
 \arguments{
-\item{orig.y}{Effect estimate in the original study. Can be a vector for multiple original studies.}
+\item{yio}{Effect estimate in the original study. Can be a vector for multiple original studies.}
 
-\item{orig.vy}{Estimated variance of effect estimate in the original study (i.e., its squared standard error).
+\item{vio}{Estimated variance of effect estimate in the original study (i.e., its squared standard error).
 Can be a vector for multiple original studies.}
 
-\item{rep.vy}{Estimated variance of effect estimate in the replication study (i.e., its squared standard error).
+\item{vir}{Estimated variance of effect estimate in the replication study (i.e., its squared standard error).
 Can be a vector for multiple replication studies.}
 
 \item{t2}{Optionally (if allowing for heterogeneity), the estimated variance of true effects across replication studies.}
@@ -23,7 +22,7 @@ Can be a vector for multiple replication studies.}
 \item{alpha}{Alpha level for the hypothesis tests.}
 }
 \description{
-Given effect estimates and their variances for one or multiple original studies and variances for one or more
+Given point estimates and their variances for one or multiple original studies and variances for one or more
 replication studies, 
 returns a vector of probabilities that the replication estimate is "statistically significant" and
 in the same direction
@@ -32,15 +31,18 @@ as the original. Can be computed assuming no heterogeneity or allowing for heter
 \examples{
 # replication estimates (Fisher's z scale) and SEs
 # from moral credential example in Mathur & VanderWeele
-# (in preparation)
-r.fis = c(0.303, 0.078, 0.113, -0.055, 0.056, 0.073,
+# (under review)
+yir = c(0.303, 0.078, 0.113, -0.055, 0.056, 0.073,
 0.263, 0.056, 0.002, -0.106, 0.09, 0.024, 0.069, 0.074,
 0.107, 0.01, -0.089, -0.187, 0.265, 0.076, 0.082)
 
-r.SE = c(0.111, 0.092, 0.156, 0.106, 0.105, 0.057,
+seir = c(0.111, 0.092, 0.156, 0.106, 0.105, 0.057,
 0.091, 0.089, 0.081, 0.1, 0.093, 0.086, 0.076,
 0.094, 0.065, 0.087, 0.108, 0.114, 0.073, 0.105, 0.04)
 
 # how many do we expect to agree?
-sum( prob_signif_agree( orig.y = 0.21, orig.vy = 0.004, rep.vy = r.SE^2 ) )
+sum( prob_signif_agree( yio = 0.21, vio = 0.004, vir = seir^2 ) )
+}
+\references{
+1. Mathur MB & VanderWeele TJ (under review). New statistical metrics for multisite replication projects.
 }
